@@ -1,36 +1,69 @@
-# Python Template Repository including a `tox.ini`, Unittests&Coverage, Pylint & MyPy Linting Actions and a PyPI Publishing Workflow
+# Seviper - Error handling framework to catch 'em all
 
-<!--- you need to replace the `organization/repo_name` in the status badge URLs --->
+![Unittests status badge](https://github.com/Hochfrequenz/seviper/workflows/Unittests/badge.svg)
+![Coverage status badge](https://github.com/Hochfrequenz/seviper/workflows/Coverage/badge.svg)
+![Linting status badge](https://github.com/Hochfrequenz/seviper/workflows/Linting/badge.svg)
+![Black status badge](https://github.com/Hochfrequenz/seviper/workflows/Formatting/badge.svg)
 
-![Unittests status badge](https://github.com/Hochfrequenz/python_template_repository/workflows/Unittests/badge.svg)
-![Coverage status badge](https://github.com/Hochfrequenz/python_template_repository/workflows/Coverage/badge.svg)
-![Linting status badge](https://github.com/Hochfrequenz/python_template_repository/workflows/Linting/badge.svg)
-![Black status badge](https://github.com/Hochfrequenz/python_template_repository/workflows/Formatting/badge.svg)
+## Features
+This framework provides several error handlers to catch errors and call callback functions to handle these errors
+(or successes). It comes fully equipped with:
 
-This is a template repository.
-It doesn't contain any useful code but only a minimal working setup for a Python project including:
+- A decorator to handle errors in functions or coroutines
+- A decorator to retry a function or coroutine if it fails
+- A context manager to handle errors in a block of code
 
-- a basic **project structure** with
-  - tox.ini
-  - `pyproject.toml` where the project metadata and dependencies are defined
-  - and a requirements.txt derived from it
-  - an example class
-  - an example unit test (using pytest)
-- ready to use **Github Actions** for
-  - [pytest](https://pytest.org)
-  - [code coverage measurement](https://coverage.readthedocs.io) (fails below 80% by default)
-  - [pylint](https://pylint.org/) (only accepts 10/10 code rating by default)
-  - [mypy](https://github.com/python/mypy) (static type checks where possible)
-  - [black](https://github.com/psf/black) code formatter check
-  - [isort](https://pycqa.github.io/isort/) import order check
-  - [codespell](https://github.com/codespell-project/codespell) spell check (including an ignore list)
-  - autoresolve dev-dependencies with `tox -e compile_requirements`
-  - ready-to-use publishing workflow for pypi (see readme section below)
+Additionally, if you use `aiostream` (e.g. using `pip install seviper[aiostream]`), you can use the following features:
 
-By default, it uses Python version 3.12.
+- The `stream.map` (or `pipe.map`, analogous to the `aiostream` functions) function to run the function, catch all
+    exceptions and call the error handler if an exception occurs. Additionally, filters out all failed results.
 
-This repository uses a [`src`-based layout](https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/).
-This approach has many advantages and basically means for developers, that all business logic lives in the `src` directory.
+## Installation
+
+```bash
+pip install seviper
+```
+
+or optionally:
+
+```bash
+pip install seviper[aiostream]
+```
+
+## Usage
+Here is a complex example as showcase of the features of this library:
+
+```python
+import asyncio
+import aiostream
+import error_handler
+import logging
+
+
+```
+
+
+```python
+import asyncio
+import error_handler
+
+def handle_value_errors(error: Exception):
+    if isinstance(error, ValueError):
+        print(f"ValueError occurred: {error}")
+        return
+    raise error
+
+@error_handler.decorator(on_error=handle_value_errors)
+async def async_function(mode: int) -> None:
+    if mode == 1:
+        raise ValueError("This is a test error")
+    if mode == 2:
+        raise TypeError("This is another test error")
+
+
+asyncio.run(async_function(1))  # prints "ValueError occurred: This is a test error"
+asyncio.run(async_function(2))  # raises TypeError
+```
 
 ## How to use this Repository on Your Machine
 
@@ -49,11 +82,11 @@ Set-ExecutionPolicy -ExecutionPolicy AllSigned
 and try again (with your regular user, not as admin).
 
 ### Creating the project-specifc dev environment.
-If all problems are solved and you're ready to start: 
-   1. clone the repository, you want to work in 
-   2. create the `dev` environment on your machine. To do this: 
+If all problems are solved and you're ready to start:
+   1. clone the repository, you want to work in
+   2. create the `dev` environment on your machine. To do this:
        a) Open a Powershell
-       b) change directory to your repository 
+       b) change directory to your repository
 and finally type
 
 ```bash
@@ -80,12 +113,12 @@ If you ever see something like `from src.mypackage.mymodule import ...`, then yo
 a) Open any test file whose name starts with `test_` in unit tests/tests
 b) Right click inside the code ➡ More Run/Debug ➡ Modify Run Configuration ➡ Working directory
 c) Change to `your_repo` instead of `your_repo\unittests`
-By doing so, the import and other file paths in the tests are relative to the repo root. 
+By doing so, the import and other file paths in the tests are relative to the repo root.
 If this doesn't work anymore, see: [working directory of the unit tests](https://www.jetbrains.com/help/pycharm/creating-run-debug-configuration-for-tests.html)
 
 ### How to use with VS Code
 All paths mentioned in this section are relative to the repository root.
- 
+
 1. Open the folder with VS Code.
 2. **Select the python interpreter** ([official docs](https://code.visualstudio.com/docs/python/environments#_manually-specify-an-interpreter)) which is created by tox. Open the command pallett with `CTRL + P` and type `Python: Select Interpreter`. Select the interpreter which is placed in `.tox/dev/Scripts/python.exe` under Windows or `.tox/dev/bin/python` under Linux and macOS.
 3. **Set up pytest and pylint**. Therefore we open the file `.vscode/settings.json` which should be automatically generated during the interpreter setup. If it doesn't exist, create it. Insert the following lines into the settings:
