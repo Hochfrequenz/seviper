@@ -29,5 +29,5 @@ def raise_import_error():
     """
     raise ImportError(
         "aiostream not found. This feature needs aiostream installed. "
-        "Consider using `pip install hf-catcher[aiostream]`."
+        "Consider using `pip install seviper[aiostream]`."
     )
