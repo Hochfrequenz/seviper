@@ -78,8 +78,7 @@ assert result == [2, 6, 5, 14, 18]
 
 ## How to use this Repository on Your Machine
 
-Please refer to the respective section in our [Python template repository]
-(https://github.com/Hochfrequenz/python_template_repository?tab=readme-ov-file#how-to-use-this-repository-on-your-machine)
+Please refer to the respective section in our [Python template repository](https://github.com/Hochfrequenz/python_template_repository?tab=readme-ov-file#how-to-use-this-repository-on-your-machine)
 to learn how to use this repository on your machine.
 
 ## Contribute
