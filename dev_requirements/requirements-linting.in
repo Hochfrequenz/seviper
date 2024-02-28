@@ -1,2 +1,2 @@
 # specific requirements for the tox linting env
-pylint
+pylint>=3.1.0
