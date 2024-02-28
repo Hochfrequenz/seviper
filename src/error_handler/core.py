@@ -21,8 +21,7 @@ def _call_callback(
     callback: Callable[[_T], _U] | Callable[[], _U],
     optional_arg: _T,
     raise_if_arg_present: bool = False,
-) -> _U:
-    ...
+) -> _U: ...
 
 
 @overload
@@ -30,8 +29,7 @@ def _call_callback(
     callback: Callable[[], _U],
     optional_arg: UnsetType = UNSET,
     raise_if_arg_present: bool = False,
-) -> _U:
-    ...
+) -> _U: ...
 
 
 def _call_callback(
