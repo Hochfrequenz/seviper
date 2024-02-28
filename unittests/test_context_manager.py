@@ -1,4 +1,5 @@
 import pytest
+from test_decorator import assert_not_called
 
 import error_handler
 
@@ -26,7 +27,7 @@ class TestErrorHandlerContextManager:
             nonlocal succeeded
             succeeded = True
 
-        with error_handler.context_manager(on_success=succeeded_callback):
+        with error_handler.context_manager(on_success=succeeded_callback, on_error=assert_not_called):
             pass
 
         assert succeeded

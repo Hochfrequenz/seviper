@@ -4,18 +4,19 @@ This module contains decorators to secure an async or sync callable and handle i
 
 import asyncio
 import functools
+import inspect
 import logging
 import time
-from typing import Any, Callable, TypeGuard
+from typing import Any, Callable, Concatenate, ParamSpec, TypeGuard
 
-from .core import Catcher
+from .callback import Callback
+from .core import _CALLBACK_ERROR_PARAM, Catcher
 from .types import (
     ERRORED,
     AsyncFunctionType,
     ErroredType,
     FunctionType,
     NegativeResult,
-    P,
     PositiveResult,
     ResultType,
     SecuredAsyncFunctionType,
@@ -23,8 +24,12 @@ from .types import (
     T,
 )
 
+_P = ParamSpec("_P")
 
-def iscoroutinefunction(callable_: FunctionType[P, T] | AsyncFunctionType[P, T]) -> TypeGuard[AsyncFunctionType[P, T]]:
+
+def iscoroutinefunction(
+    callable_: FunctionType[_P, T] | AsyncFunctionType[_P, T]
+) -> TypeGuard[AsyncFunctionType[_P, T]]:
     """
     This function checks if the given callable is a coroutine function.
     """
@@ -33,13 +38,13 @@ def iscoroutinefunction(callable_: FunctionType[P, T] | AsyncFunctionType[P, T])
 
 # pylint: disable=too-many-arguments
 def decorator(
-    on_success: Callable[[T], Any] | Callable[[], Any] | None = None,
-    on_error: Callable[[Exception], Any] | Callable[[], Any] | None = None,
-    on_finalize: Callable[[], Any] | None = None,
+    on_success: Callable[Concatenate[T, _P], Any] | None = None,
+    on_error: Callable[Concatenate[Exception, _P], Any] | None = None,
+    on_finalize: Callable[_P, Any] | None = None,
     on_error_return_always: T | ErroredType = ERRORED,
     suppress_recalling_on_error: bool = True,
 ) -> Callable[
-    [FunctionType[P, T] | AsyncFunctionType[P, T]], SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
+    [FunctionType[_P, T] | AsyncFunctionType[_P, T]], SecuredFunctionType[_P, T] | SecuredAsyncFunctionType[_P, T]
 ]:
     """
     This decorator secures a callable (sync or async) and handles its errors.
@@ -56,14 +61,14 @@ def decorator(
     catcher = Catcher[T](on_success, on_error, on_finalize, on_error_return_always, suppress_recalling_on_error)
 
     def decorator_inner(
-        callable_to_secure: FunctionType[P, T] | AsyncFunctionType[P, T]
-    ) -> SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]:
+        callable_to_secure: FunctionType[_P, T] | AsyncFunctionType[_P, T]
+    ) -> SecuredFunctionType[_P, T] | SecuredAsyncFunctionType[_P, T]:
         if iscoroutinefunction(callable_to_secure):
 
             @functools.wraps(callable_to_secure)
-            async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T | ErroredType:
+            async def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> T | ErroredType:
                 return (
-                    await catcher.secure_await(callable_to_secure(*args, **kwargs))
+                    await catcher.secure_call_coroutine(callable_to_secure, *args, **kwargs)
                 ).result  # type: ignore[return-value]
 
                 # Incompatible return value type (got "object", expected "T")  [return-value]
@@ -72,7 +77,7 @@ def decorator(
         else:
 
             @functools.wraps(callable_to_secure)
-            def wrapper(*args: P.args, **kwargs: P.kwargs) -> T | ErroredType:
+            def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> T | ErroredType:
                 return catcher.secure_call(  # type: ignore[return-value]
                     callable_to_secure,  # type: ignore[arg-type]
                     *args,
@@ -90,16 +95,16 @@ def decorator(
 
 # pylint: disable=too-many-arguments
 def retry_on_error(
-    on_error: Callable[[Exception, int], bool],
+    on_error: Callable[Concatenate[Exception, int, _P], bool],
     retry_stepping_func: Callable[[int], float] = lambda retry_count: 1.71**retry_count,
     # <-- with max_retries = 10 the whole decorator may wait up to 5 minutes.
     # because sum(1.71seconds**i for i in range(10)) == 5minutes
     max_retries: int = 10,
-    on_success: Callable[[T, int], Any] | None = None,
-    on_fail: Callable[[Exception, int], Any] | None = None,
-    on_finalize: Callable[[int], Any] | None = None,
+    on_success: Callable[Concatenate[T, int, _P], Any] | None = None,
+    on_fail: Callable[Concatenate[Exception, int, _P], Any] | None = None,
+    on_finalize: Callable[Concatenate[int, _P], Any] | None = None,
     logger: logging.Logger = logging.getLogger(__name__),
-) -> Callable[[FunctionType[P, T]], FunctionType[P, T]]:
+) -> Callable[[FunctionType[_P, T]], FunctionType[_P, T]]:
     """
     This decorator retries a callable (sync or async) on error.
     The retry_stepping_func is called with the retry count and should return the time to wait until the next retry.
@@ -112,40 +117,81 @@ def retry_on_error(
     """
     # pylint: disable=unsubscriptable-object
     catcher = Catcher[T]()
+    on_error_callback = Callback.from_callable(on_error)
+    on_success_callback = Callback.from_callable(on_success) if on_success is not None else None
+    on_fail_callback = Callback.from_callable(on_fail) if on_fail is not None else None
+    on_finalize_callback = Callback.from_callable(on_finalize) if on_finalize is not None else None
 
-    def handle_result(result: ResultType[T], retry_count: int) -> bool:
+    def handle_result(result: ResultType[T], retry_count: int, *args: _P.args, **kwargs: _P.kwargs) -> bool:
         if isinstance(result, NegativeResult):
-            if not on_error(result.error, retry_count):
-                if on_fail is not None:
-                    on_fail(result.error, retry_count)
-                if on_finalize is not None:
-                    on_finalize(retry_count)
+            if not on_error_callback(result.error, retry_count, *args, **kwargs):
+                if on_fail_callback is not None:
+                    on_fail_callback(result.error, retry_count, *args, **kwargs)
+                if on_finalize_callback is not None:
+                    on_finalize_callback(retry_count, *args, **kwargs)
                 raise result.error
             return True
-        if on_success is not None:
-            on_success(result.result, retry_count)
-        if on_finalize is not None:
-            on_finalize(retry_count)
+        if on_success_callback is not None:
+            on_success_callback(result.result, retry_count, *args, **kwargs)
+        if on_finalize_callback is not None:
+            on_finalize_callback(retry_count, *args, **kwargs)
         return False
 
-    def too_many_retries_error_handler(callback_name: str, max_retries: int) -> Exception:
+    def too_many_retries_error_handler(
+        callback_name: str, max_retries: int, *args: _P.args, **kwargs: _P.kwargs
+    ) -> Exception:
         too_many_retries_error = RuntimeError(f"Too many retries ({max_retries}) for {callback_name}")
-        if on_fail is not None:
-            on_fail(too_many_retries_error, max_retries)
-        if on_finalize is not None:
-            on_finalize(max_retries)
+        if on_fail_callback is not None:
+            on_fail_callback(too_many_retries_error, max_retries, *args, **kwargs)
+        if on_finalize_callback is not None:
+            on_finalize_callback(max_retries, *args, **kwargs)
         return too_many_retries_error
 
+    def set_expected_signatures(callable_to_secure: FunctionType[_P, T] | AsyncFunctionType[_P, T]) -> None:
+        callback_signature_partial = inspect.signature(callable_to_secure)
+        callback_signature_partial = callback_signature_partial.replace(
+            parameters=[
+                inspect.Parameter("retries", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=int),
+            ],
+        )
+        on_error_callback.expected_signature = callback_signature_partial.replace(
+            parameters=[_CALLBACK_ERROR_PARAM, *callback_signature_partial.parameters.values()], return_annotation=bool
+        )
+        if on_success_callback is not None:
+            add_param = inspect.Parameter(
+                "result",
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                annotation=callback_signature_partial.return_annotation,
+            )
+            on_success_callback.expected_signature = callback_signature_partial.replace(
+                parameters=[
+                    add_param,
+                    *callback_signature_partial.parameters.values(),
+                ],
+                return_annotation=Any,
+            )
+        if on_fail_callback is not None:
+            on_fail_callback.expected_signature = callback_signature_partial.replace(
+                parameters=[_CALLBACK_ERROR_PARAM, *callback_signature_partial.parameters.values()],
+                return_annotation=Any,
+            )
+        if on_finalize_callback is not None:
+            on_finalize_callback.expected_signature = callback_signature_partial.replace(
+                return_annotation=Any,
+            )
+
     def decorator_inner(
-        callable_to_secure: FunctionType[P, T] | AsyncFunctionType[P, T]
-    ) -> SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]:
+        callable_to_secure: FunctionType[_P, T] | AsyncFunctionType[_P, T]
+    ) -> SecuredFunctionType[_P, T] | SecuredAsyncFunctionType[_P, T]:
+        set_expected_signatures(callable_to_secure)
+
         if iscoroutinefunction(callable_to_secure):
 
             @functools.wraps(callable_to_secure)
-            async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            async def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> T:
                 for retry_count in range(max_retries):
-                    result = await catcher.secure_await(callable_to_secure(*args, **kwargs))
-                    if handle_result(result, retry_count):
+                    result = await catcher.secure_call_coroutine(callable_to_secure, *args, **kwargs)
+                    if handle_result(result, retry_count, *args, **kwargs):
                         # Should retry
                         await asyncio.sleep(retry_stepping_func(retry_count))
                         continue
@@ -153,7 +199,7 @@ def retry_on_error(
                     assert isinstance(result, PositiveResult), "Internal error: NegativeResult was not handled properly"
                     return result.result
 
-                raise too_many_retries_error_handler(callable_to_secure.__name__, max_retries)
+                raise too_many_retries_error_handler(callable_to_secure.__name__, max_retries, *args, **kwargs)
 
         else:
             logger.warning(
@@ -163,10 +209,10 @@ def retry_on_error(
             )
 
             @functools.wraps(callable_to_secure)
-            def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> T:
                 for retry_count in range(max_retries):
                     result = catcher.secure_call(callable_to_secure, *args, **kwargs)  # type: ignore[arg-type]
-                    if handle_result(result, retry_count):
+                    if handle_result(result, retry_count, *args, **kwargs):
                         # Should retry
                         time.sleep(retry_stepping_func(retry_count))
                         continue
@@ -174,12 +220,7 @@ def retry_on_error(
                     assert isinstance(result, PositiveResult), "Internal error: NegativeResult was not handled properly"
                     return result.result
 
-                too_many_retries_error = RuntimeError(
-                    f"Too many retries ({max_retries}) for {callable_to_secure.__name__}"
-                )
-                if on_fail is not None:
-                    on_fail(too_many_retries_error, max_retries)
-                raise too_many_retries_error
+                raise too_many_retries_error_handler(callable_to_secure.__name__, max_retries, *args, **kwargs)
 
         wrapper.__catcher__ = catcher  # type: ignore[attr-defined]
         wrapper.__original_callable__ = callable_to_secure  # type: ignore[attr-defined]

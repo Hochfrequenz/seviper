@@ -1,5 +1,6 @@
 import pytest
 from aiostream import stream
+from test_decorator import create_callback_tracker
 
 import error_handler
 
@@ -51,7 +52,7 @@ class TestErrorHandlerPipableOperators:
                 raise ValueError(f"{num}")
             return num
 
-        def store(error: Exception):
+        def store(error: Exception, _: int):
             nonlocal errored_nums
             errored_nums.add(int(str(error)))
 
@@ -65,11 +66,11 @@ class TestErrorHandlerPipableOperators:
         op = stream.iterate([1, 2, 3, 4, 5, 6])
 
         @error_handler.decorator(on_error_return_always=0)
-        def raise_for_even(_: int) -> int:
+        def return_1(_: int) -> int:
             return 1
 
         with pytest.raises(ValueError) as error:
-            _ = error_handler.stream.map(op, raise_for_even)
+            _ = error_handler.stream.map(op, return_1)
 
         assert "The given function is already secured but does not return ERRORED in error case" in str(error.value)
 
@@ -77,44 +78,45 @@ class TestErrorHandlerPipableOperators:
         op = stream.iterate([1, 2, 3, 4, 5, 6])
 
         @error_handler.decorator()
-        def raise_for_even(_: int) -> int:
+        def return_1(_: int) -> int:
             return 1
 
         with pytest.raises(ValueError) as error:
-            _ = error_handler.stream.map(op, raise_for_even, on_error=lambda _: None)
+            _ = error_handler.stream.map(op, return_1, on_error=lambda _: None)
 
         assert "Please do not set on_success, on_error, on_finalize as they would be ignored" in str(error.value)
 
     async def test_secured_map_stream_double_secure_no_wrap(self):
-        errored_nums: set[int] = set()
+        error_callback, error_tracker = create_callback_tracker()
+        success_callback, success_tracker = create_callback_tracker()
+
         op = stream.iterate([1, 2, 3, 4, 5, 6])
 
-        def store(error: Exception):
-            nonlocal errored_nums
-            errored_nums.add(int(str(error)))
-
-        @error_handler.decorator(on_error=store)
+        @error_handler.decorator(on_error=error_callback, on_success=success_callback)
         def raise_for_even(num: int) -> int:
             if num % 2 == 0:
-                raise ValueError(f"{num}")
+                raise ValueError(num)
             return num
 
         op = error_handler.stream.map(op, raise_for_even)
 
         elements = await stream.list(op)
         assert set(elements) == {1, 3, 5}
+        errored_nums = {error.args[0] for (error, _), __ in error_tracker}
         assert errored_nums == {2, 4, 6}
+        succeeded_nums = {num_returned for (num_returned, _), __ in success_tracker}
+        assert succeeded_nums == {1, 3, 5}
 
     async def test_secured_map_stream_double_secure_wrap(self):
         errored_nums_from_map: set[int] = set()
         errored_nums_from_decorator: set[int] = set()
         op = stream.iterate([1, 2, 3, 4, 5, 6])
 
-        def store_from_map(error: Exception):
+        def store_from_map(error: Exception, _: int):
             nonlocal errored_nums_from_map
             errored_nums_from_map.add(int(str(error)))
 
-        def store_from_decorator(error: Exception):
+        def store_from_decorator(error: Exception, _: int):
             nonlocal errored_nums_from_decorator
             errored_nums_from_decorator.add(int(str(error)))
             raise error
@@ -142,7 +144,7 @@ class TestErrorHandlerPipableOperators:
                 raise ValueError(f"{num}")
             return num
 
-        def store(error: Exception):
+        def store(error: Exception, _: int):
             nonlocal errored_nums
             errored_nums.add(int(str(error)))
 

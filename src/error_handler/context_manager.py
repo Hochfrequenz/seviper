@@ -10,7 +10,7 @@ from .core import Catcher
 # pylint: disable=unsubscriptable-object
 def context_manager(
     on_success: Callable[[], Any] | None = None,
-    on_error: Callable[[Exception], Any] | Callable[[], Any] | None = None,
+    on_error: Callable[[Exception], Any] | None = None,
     on_finalize: Callable[[], Any] | None = None,
     suppress_recalling_on_error: bool = True,
 ) -> ContextManager[Catcher[None]]:

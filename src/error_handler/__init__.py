@@ -19,7 +19,7 @@ from .types import (
     ResultType,
     SecuredAsyncFunctionType,
     SecuredFunctionType,
-    UnsetType,
+    _UnsetType,
 )
 
 stream = importlib.import_module("error_handler.stream")

@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import aiostream
 
@@ -7,11 +8,13 @@ import error_handler
 
 class TestComplexExample:
     async def test_complex_use_case(self):
+        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
+        logger = logging.root
         op = aiostream.stream.iterate(range(10))
 
-        def log_error(error: Exception):
+        def log_error(error: Exception, num: int):
             """Only log error and reraise it"""
-            logging.error(error)
+            logger.error("double_only_odd_nums_except_5 failed for input %d. ", num)
             raise error
 
         @error_handler.decorator(on_error=log_error)
@@ -24,12 +27,12 @@ class TestComplexExample:
                 num *= 2
             return num
 
-        def catch_value_errors(error: Exception):
+        def catch_value_errors(error: Exception, _: int):
             if not isinstance(error, ValueError):
                 raise error
 
-        def log_success(num: int):
-            logging.info("Success: %s", num)
+        def log_success(result_num: int, provided_num: int):
+            logger.info("Success: %d -> %d", provided_num, result_num)
 
         op = op | error_handler.pipe.map(
             double_only_odd_nums_except_5,

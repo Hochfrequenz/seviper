@@ -4,8 +4,8 @@ This module defines the types used in the error_handler module.
 
 import inspect
 from abc import ABC
-from dataclasses import dataclass
-from typing import Awaitable, Callable, Generic, ParamSpec, TypeAlias, TypeVar
+from dataclasses import dataclass, field
+from typing import Any, Awaitable, Callable, Generic, ParamSpec, TypeAlias, TypeVar
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -59,7 +59,7 @@ class ErroredType(metaclass=Singleton):
 
 
 # pylint: disable=too-few-public-methods
-class UnsetType(metaclass=Singleton):
+class _UnsetType(metaclass=Singleton):
     """
     This type is meant to be used as singleton. Do not instantiate it on your own.
     The instance below represents an unset value. It is needed as default value since the respective
@@ -93,7 +93,7 @@ class NegativeResult(Result[T]):
     error: Exception
 
 
-UNSET = UnsetType()
+UNSET = _UnsetType()
 """
 Represents an unset value. It is used as default value for parameters that can be of any type.
 """
