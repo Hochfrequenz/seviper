@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 import aiostream
@@ -19,7 +18,7 @@ class TestComplexExample:
         async def double_only_odd_nums_except_5(num: int) -> int:
             if num % 2 == 0:
                 raise ValueError(num)
-            with error_handler.context_manager(on_success=lambda: logging.info(f"Success: {num}")):
+            with error_handler.context_manager(on_success=lambda: logging.info("Success: %s", num)):
                 if num == 5:
                     raise RuntimeError("Another unexpected error. Number 5 will not be doubled.")
                 num *= 2
@@ -30,7 +29,7 @@ class TestComplexExample:
                 raise error
 
         def log_success(num: int):
-            logging.info(f"Success: {num}")
+            logging.info("Success: %s", num)
 
         op = op | error_handler.pipe.map(
             double_only_odd_nums_except_5,
