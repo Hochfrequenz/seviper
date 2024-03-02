@@ -82,19 +82,6 @@ class Catcher(Generic[T]):
         error.__caught_by_catcher__.append(self)  # type: ignore[attr-defined]
 
     @staticmethod
-    def _ensure_exception_in_cause_propagation(error_base: BaseException, error_cause: BaseException) -> None:
-        """
-        This method ensures that the given error_cause is in the cause chain of the given error_base.
-        """
-        if error_base is error_cause:
-            return
-        if error_base.__cause__ is None:
-            error_base.__cause__ = error_cause
-        else:
-            assert isinstance(error_base.__cause__, BaseException), "Internal error: __cause__ is not a BaseException"
-            Catcher._ensure_exception_in_cause_propagation(error_base.__cause__, error_cause)
-
-    @staticmethod
     def _call_callback(callback: Callback | None, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
         callback_result = CallbackResultType.SKIPPED
         callback_return_value: Any = UNSET
