@@ -45,6 +45,7 @@ class Catcher(Generic[T]):
         on_error_return_always: T | ErroredType = ERRORED,
         suppress_recalling_on_error: bool = True,
         raise_callback_errors: bool = True,
+        no_wrap_exception_group_when_reraise: bool = True,
     ):
         self.on_success = on_success
         self.on_error = on_error
@@ -59,6 +60,7 @@ class Catcher(Generic[T]):
         """
         self._result: ResultType[T] | None = None
         self.raise_callback_errors = raise_callback_errors
+        self.no_wrap_exception_group_when_reraise = no_wrap_exception_group_when_reraise
 
     @property
     def result(self) -> ResultType[T]:
@@ -94,7 +96,7 @@ class Catcher(Generic[T]):
     @staticmethod
     def _call_callback(callback: Callback | None, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
         callback_result = CallbackResultType.SKIPPED
-        callback_return_value = UNSET
+        callback_return_value: Any = UNSET
         if callback is not None:
             try:
                 callback_return_value = callback(*args, **kwargs)
@@ -104,7 +106,7 @@ class Catcher(Generic[T]):
                 callback_result = CallbackResultType.ERROR
         return callback_return_value, callback_result
 
-    def _raise_callback_errors_if_set(self, result: CallbackSummary, *additional_errors: BaseException) -> None:
+    def _raise_callback_errors_if_set(self, result: CallbackSummary, raise_from: BaseException | None = None) -> None:
         if not self.raise_callback_errors:
             return
         excs = []
@@ -115,9 +117,13 @@ class Catcher(Generic[T]):
         if result.callback_result_types.finalize == CallbackResultType.ERROR:
             excs.append(result.callback_return_values.finalize)
 
+        if self.no_wrap_exception_group_when_reraise and len(excs) == 1 and raise_from is excs[0]:
+            raise raise_from
         if len(excs) > 0:
-            excs.extend(additional_errors)
-            raise BaseExceptionGroup("There were one or more errors while calling the callback functions.", excs)
+            exc_group = BaseExceptionGroup("There were one or more errors while calling the callback functions.", excs)
+            if raise_from is not None:
+                exc_group.__context__ = raise_from
+            raise exc_group
 
     def _handle_error_callback(self, error: BaseException, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
         """
@@ -129,9 +135,10 @@ class Catcher(Generic[T]):
         self._mark_exception(error)
         if not (caught_before and self.suppress_recalling_on_error):
             return_value, result = self._call_callback(self.on_error, error, *args, **kwargs)
-            if result == CallbackResultType.ERROR:
-                assert isinstance(return_value, BaseException), "Internal error: return_value is not a BaseException"
-                self._ensure_exception_in_cause_propagation(return_value, error)
+            if result == CallbackResultType.ERROR and return_value is error:
+                assert self.on_error is not None, "Internal error: on_error is None but result is ERROR"
+                error.add_note(f"This error was reraised by on_error callback {self.on_error.callback.__name__}")
+
         return return_value, result
 
     def _handle_success_callback(self, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
@@ -155,7 +162,7 @@ class Catcher(Generic[T]):
         else:
             success_return_value, success_result = self._handle_success_callback(result, *args, **kwargs)
         finalize_return_value, finalize_result = self._handle_finalize_callback(*args, **kwargs)
-        result = CallbackSummary(
+        callback_result = CallbackSummary(
             callback_result_types=CallbackResultTypes(
                 success=success_result,
                 finalize=finalize_result,
@@ -165,8 +172,8 @@ class Catcher(Generic[T]):
                 finalize=finalize_return_value,
             ),
         )
-        self._raise_callback_errors_if_set(result)
-        return result
+        self._raise_callback_errors_if_set(callback_result)
+        return callback_result
 
     def handle_error_case(self, error: BaseException, *args: Any, **kwargs: Any) -> CallbackSummary:
         """
@@ -174,7 +181,7 @@ class Catcher(Generic[T]):
         """
         error_return_value, error_result = self._handle_error_callback(error, *args, **kwargs)
         finalize_return_value, finalize_result = self._handle_finalize_callback(*args, **kwargs)
-        result = CallbackSummary(
+        callback_result = CallbackSummary(
             callback_result_types=CallbackResultTypes(
                 error=error_result,
                 finalize=finalize_result,
@@ -184,8 +191,8 @@ class Catcher(Generic[T]):
                 finalize=finalize_return_value,
             ),
         )
-        self._raise_callback_errors_if_set(result, error)
-        return result
+        self._raise_callback_errors_if_set(callback_result, error)
+        return callback_result
 
     def handle_result_and_call_callbacks(self, result: ResultType[T], *args: Any, **kwargs: Any) -> CallbackSummary:
         """
@@ -214,7 +221,7 @@ class Catcher(Generic[T]):
             self._result = PositiveResult(result=result)
         except BaseException as error:  # pylint: disable=broad-exception-caught
             self._result = NegativeResult(error=error, result=self.on_error_return_always)
-        return self._result
+        return self.result
 
     async def secure_await(  # type: ignore[return]  # Because mypy is stupid, idk.
         self,
@@ -233,7 +240,7 @@ class Catcher(Generic[T]):
             self._result = PositiveResult(result=result)
         except BaseException as error:  # pylint: disable=broad-exception-caught
             self._result = NegativeResult(error=error, result=self.on_error_return_always)
-        return self._result
+        return self.result
 
     @contextmanager
     def secure_context(self) -> Iterator[Self]:

@@ -41,10 +41,10 @@ class TestErrorHandlerContextManager:
             catched_error = error
             raise error
 
-        with pytest.raises(BaseExceptionGroup) as error:
+        with pytest.raises(ValueError) as error:
             with error_handler.context_manager(on_error=store_error):
                 raise ValueError("This is a test error world")
 
         assert isinstance(catched_error, ValueError)
-        assert error.value.exceptions[0] is catched_error
+        assert error.value is catched_error
         assert str(catched_error) == "This is a test error world"

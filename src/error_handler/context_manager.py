@@ -5,6 +5,7 @@ This module provides a context manager to handle errors in a convenient way.
 from contextlib import contextmanager
 from typing import Any, Callable, ContextManager, Iterator
 
+from .callback import Callback, ErrorCallback
 from .core import Catcher
 from .types import _UnsetType
 
@@ -28,7 +29,10 @@ def context_manager(
     caught by a previous catcher.
     """
     catcher = Catcher[_UnsetType](
-        on_success, on_error, on_finalize, suppress_recalling_on_error=suppress_recalling_on_error
+        Callback.from_callable(on_success, return_type=Any) if on_success is not None else None,
+        ErrorCallback.from_callable(on_error, return_type=Any) if on_error is not None else None,
+        Callback.from_callable(on_finalize, return_type=Any) if on_finalize is not None else None,
+        suppress_recalling_on_error=suppress_recalling_on_error,
     )
     with catcher.secure_context():
         yield catcher
