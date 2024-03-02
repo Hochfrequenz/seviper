@@ -29,6 +29,7 @@ _P = ParamSpec("_P")
 _CALLBACK_ERROR_PARAM = inspect.Parameter("error", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=BaseException)
 
 
+# pylint: disable=too-many-instance-attributes
 class Catcher(Generic[T]):
     """
     After defining callbacks and other options for an instance, you can use the secure_call and secure_await methods

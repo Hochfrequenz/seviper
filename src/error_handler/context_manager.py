@@ -3,7 +3,7 @@ This module provides a context manager to handle errors in a convenient way.
 """
 
 from contextlib import contextmanager
-from typing import Any, Callable, ContextManager, Iterator
+from typing import Any, Callable, Iterator
 
 from .callback import Callback, ErrorCallback
 from .core import Catcher

@@ -95,6 +95,11 @@ class Callback(Generic[_P, _T]):
 
 
 class ErrorCallback(Callback[_P, _T]):
+    """
+    This class wraps an error callback. It is a subclass of Callback and adds the error parameter to the expected
+    signature.
+    """
+
     _CALLBACK_ERROR_PARAM = inspect.Parameter("error", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Exception)
 
     @classmethod
@@ -117,6 +122,11 @@ class ErrorCallback(Callback[_P, _T]):
 
 
 class SuccessCallback(Callback[_P, _T]):
+    """
+    This class wraps a success callback. It is a subclass of Callback and adds the result parameter to the expected
+    signature. The annotation type is taken from the return annotation of the `signature_from_callable`.
+    """
+
     @classmethod
     def from_callable(
         cls: type[_SuccessCallbackT],
