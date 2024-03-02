@@ -1,8 +1,9 @@
 import pytest
 from aiostream import stream
-from test_decorator import create_callback_tracker
 
 import error_handler
+
+from .utils import create_callback_tracker
 
 
 class TestErrorHandlerPipableOperators:

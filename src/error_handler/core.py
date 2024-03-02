@@ -7,17 +7,26 @@ methods to surround statements with try-except blocks and calls corresponding ca
 # Seems like pylint doesn't like the new typing features. It has a problem with the generic T of class Catcher.
 import inspect
 from contextlib import contextmanager
-from typing import Any, Awaitable, Callable, Generic, Iterator, ParamSpec, Self, Sequence, TypeVar, overload
+from typing import Any, Awaitable, Callable, Generic, Iterator, ParamSpec, Self, TypeVar
 
 from .callback import Callback
-from .types import ERRORED, UNSET, ErroredType, NegativeResult, PositiveResult, ResultType, T, _UnsetType
+from .result import (
+    CallbackResultType,
+    CallbackResultTypes,
+    CallbackSummary,
+    NegativeResult,
+    PositiveResult,
+    ResultType,
+    ReturnValues,
+)
+from .types import ERRORED, UNSET, ErroredType, T, _UnsetType
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
 _P = ParamSpec("_P")
 
 
-_CALLBACK_ERROR_PARAM = inspect.Parameter("error", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Exception)
+_CALLBACK_ERROR_PARAM = inspect.Parameter("error", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=BaseException)
 
 
 class Catcher(Generic[T]):
@@ -30,27 +39,16 @@ class Catcher(Generic[T]):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        on_success: Callable[..., Any] | Callback | None = None,
-        on_error: Callable[..., Any] | Callback | None = None,
-        on_finalize: Callable[..., Any] | Callback | None = None,
+        on_success: Callback | None = None,
+        on_error: Callback | None = None,
+        on_finalize: Callback | None = None,
         on_error_return_always: T | ErroredType = ERRORED,
         suppress_recalling_on_error: bool = True,
+        raise_callback_errors: bool = True,
     ):
-        self.on_success = (
-            on_success
-            if isinstance(on_success, Callback)
-            else Callback(on_success, inspect.Signature(return_annotation=Any)) if on_success is not None else None
-        )
-        self.on_error = (
-            on_error
-            if isinstance(on_error, Callback)
-            else Callback(on_error, inspect.Signature(return_annotation=Any)) if on_error is not None else None
-        )
-        self.on_finalize = (
-            on_finalize
-            if isinstance(on_finalize, Callback)
-            else Callback(on_finalize, inspect.Signature(return_annotation=Any)) if on_finalize is not None else None
-        )
+        self.on_success = on_success
+        self.on_error = on_error
+        self.on_finalize = on_finalize
         self.on_error_return_always = on_error_return_always
         self.suppress_recalling_on_error = suppress_recalling_on_error
         """
@@ -59,39 +57,20 @@ class Catcher(Generic[T]):
         This is especially useful if you have nested catchers (e.g. due to nested context managers / function calls)
         which are re-raising the error.
         """
+        self._result: ResultType[T] | None = None
+        self.raise_callback_errors = raise_callback_errors
 
-    def _auto_set_expected_signature_of_error_callback(self, base_signature: inspect.Signature | None = None):
-        if self.on_error is not None:
-            if base_signature is None:
-                base_signature = self.on_error.expected_signature
-            self.on_error.expected_signature = base_signature.replace(
-                parameters=[_CALLBACK_ERROR_PARAM, *base_signature.parameters.values()], return_annotation=Any
-            )
+    @property
+    def result(self) -> ResultType[T]:
+        """
+        This method returns the result of the last execution. If the catcher has not been executed yet, a ValueError
+        will be raised.
+        """
+        if self._result is None:
+            raise ValueError("The catcher has not been executed yet.")
+        return self._result
 
-    def _auto_set_expected_signature_of_finalize_callback(self, base_signature: inspect.Signature | None = None):
-        if self.on_finalize is not None:
-            if base_signature is not None:
-                self.on_finalize.expected_signature = base_signature
-
-    def _auto_set_expected_signature_of_success_callback(
-        self, base_signature: inspect.Signature | None = None, provide_return_annotation_as_param: bool = True
-    ):
-        if self.on_success is not None:
-            if base_signature is None:
-                base_signature = self.on_success.expected_signature
-            if provide_return_annotation_as_param:
-                add_param = inspect.Parameter(
-                    "result",
-                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=base_signature.return_annotation,
-                )
-                self.on_success.expected_signature = base_signature.replace(
-                    parameters=[add_param, *base_signature.parameters.values()], return_annotation=Any
-                )
-            else:
-                self.on_success.expected_signature = base_signature.replace(return_annotation=Any)
-
-    def mark_exception(self, error: Exception) -> None:
+    def _mark_exception(self, error: BaseException) -> None:
         """
         This method marks the given exception as handled by the catcher.
         """
@@ -100,7 +79,7 @@ class Catcher(Generic[T]):
         error.__caught_by_catcher__.append(self)  # type: ignore[attr-defined]
 
     @staticmethod
-    def _ensure_exception_in_cause_propagation(error_base: Exception, error_cause: Exception) -> None:
+    def _ensure_exception_in_cause_propagation(error_base: BaseException, error_cause: BaseException) -> None:
         """
         This method ensures that the given error_cause is in the cause chain of the given error_base.
         """
@@ -109,43 +88,117 @@ class Catcher(Generic[T]):
         if error_base.__cause__ is None:
             error_base.__cause__ = error_cause
         else:
-            assert isinstance(error_base.__cause__, Exception), "Internal error: __cause__ is not an Exception"
+            assert isinstance(error_base.__cause__, BaseException), "Internal error: __cause__ is not a BaseException"
             Catcher._ensure_exception_in_cause_propagation(error_base.__cause__, error_cause)
 
-    def handle_error_case(self, error: Exception, *args: Any, **kwargs: Any) -> ResultType[T]:
+    @staticmethod
+    def _call_callback(callback: Callback | None, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
+        callback_result = CallbackResultType.SKIPPED
+        callback_return_value = UNSET
+        if callback is not None:
+            try:
+                callback_return_value = callback(*args, **kwargs)
+                callback_result = CallbackResultType.SUCCESS
+            except BaseException as callback_error:  # pylint: disable=broad-exception-caught
+                callback_return_value = callback_error
+                callback_result = CallbackResultType.ERROR
+        return callback_return_value, callback_result
+
+    def _raise_callback_errors_if_set(self, result: CallbackSummary, *additional_errors: BaseException) -> None:
+        if not self.raise_callback_errors:
+            return
+        excs = []
+        if result.callback_result_types.success == CallbackResultType.ERROR:
+            excs.append(result.callback_return_values.success)
+        if result.callback_result_types.error == CallbackResultType.ERROR:
+            excs.append(result.callback_return_values.error)
+        if result.callback_result_types.finalize == CallbackResultType.ERROR:
+            excs.append(result.callback_return_values.finalize)
+
+        if len(excs) > 0:
+            excs.extend(additional_errors)
+            raise BaseExceptionGroup("There were one or more errors while calling the callback functions.", excs)
+
+    def _handle_error_callback(self, error: BaseException, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
         """
         This method handles the given exception.
         """
+        return_value = UNSET
+        result = CallbackResultType.SKIPPED
         caught_before = hasattr(error, "__caught_by_catcher__")
-        self.mark_exception(error)
-        if self.on_error is not None and not (caught_before and self.suppress_recalling_on_error):
-            try:
-                self.on_error(error, *args, **kwargs)
-            except Exception as callback_error:  # pylint: disable=broad-exception-caught
-                self._ensure_exception_in_cause_propagation(callback_error, error)
-                raise callback_error
-        return NegativeResult(error=error, result=self.on_error_return_always)
+        self._mark_exception(error)
+        if not (caught_before and self.suppress_recalling_on_error):
+            return_value, result = self._call_callback(self.on_error, error, *args, **kwargs)
+            if result == CallbackResultType.ERROR:
+                assert isinstance(return_value, BaseException), "Internal error: return_value is not a BaseException"
+                self._ensure_exception_in_cause_propagation(return_value, error)
+        return return_value, result
 
-    def handle_success_case(self, result: T, *args: Any, **kwargs: Any) -> ResultType[T]:
+    def _handle_success_callback(self, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
         """
         This method handles the given result.
         """
-        if self.on_success is not None:
-            self.on_success(result, *args, **kwargs)
-        return PositiveResult(result=result)
+        return self._call_callback(self.on_success, *args, **kwargs)
 
-    def handle_finalize_case(self, *args: Any, **kwargs: Any) -> None:
+    def _handle_finalize_callback(self, *args: Any, **kwargs: Any) -> tuple[Any, CallbackResultType]:
         """
         This method handles the finalize case.
         """
-        if self.on_finalize is not None:
-            self.on_finalize(*args, **kwargs)
+        return self._call_callback(self.on_finalize, *args, **kwargs)
+
+    def handle_success_case(self, result: T | _UnsetType, *args: Any, **kwargs: Any) -> CallbackSummary:
+        """
+        This method handles the success case.
+        """
+        if result is UNSET:
+            success_return_value, success_result = self._handle_success_callback(*args, **kwargs)
+        else:
+            success_return_value, success_result = self._handle_success_callback(result, *args, **kwargs)
+        finalize_return_value, finalize_result = self._handle_finalize_callback(*args, **kwargs)
+        result = CallbackSummary(
+            callback_result_types=CallbackResultTypes(
+                success=success_result,
+                finalize=finalize_result,
+            ),
+            callback_return_values=ReturnValues(
+                success=success_return_value,
+                finalize=finalize_return_value,
+            ),
+        )
+        self._raise_callback_errors_if_set(result)
+        return result
+
+    def handle_error_case(self, error: BaseException, *args: Any, **kwargs: Any) -> CallbackSummary:
+        """
+        This method handles the error case.
+        """
+        error_return_value, error_result = self._handle_error_callback(error, *args, **kwargs)
+        finalize_return_value, finalize_result = self._handle_finalize_callback(*args, **kwargs)
+        result = CallbackSummary(
+            callback_result_types=CallbackResultTypes(
+                error=error_result,
+                finalize=finalize_result,
+            ),
+            callback_return_values=ReturnValues(
+                error=error_return_value,
+                finalize=finalize_return_value,
+            ),
+        )
+        self._raise_callback_errors_if_set(result, error)
+        return result
+
+    def handle_result_and_call_callbacks(self, result: ResultType[T], *args: Any, **kwargs: Any) -> CallbackSummary:
+        """
+        This method handles the last case.
+        """
+        if isinstance(result, PositiveResult):
+            return self.handle_success_case(result.result, *args, **kwargs)
+        return self.handle_error_case(result.error, *args, **kwargs)
 
     def secure_call(  # type: ignore[return]  # Because mypy is stupid, idk.
         self,
         callable_to_secure: Callable[_P, T],
         *args: _P.args,
-        __auto_set_expected_signatures__: bool = True,
         **kwargs: _P.kwargs,
     ) -> ResultType[T]:
         """
@@ -158,34 +211,14 @@ class Catcher(Generic[T]):
         """
         try:
             result = callable_to_secure(*args, **kwargs)
-
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_success_callback(inspect.signature(callable_to_secure))
-            return self.handle_success_case(
-                result,
-                *args,
-                **kwargs,
-            )
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_error_callback(inspect.signature(callable_to_secure))
-            return self.handle_error_case(
-                error,
-                *args,
-                **kwargs,
-            )
-        finally:
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_finalize_callback(inspect.signature(callable_to_secure))
-            self.handle_finalize_case(
-                *args,
-                **kwargs,
-            )
+            self._result = PositiveResult(result=result)
+        except BaseException as error:  # pylint: disable=broad-exception-caught
+            self._result = NegativeResult(error=error, result=self.on_error_return_always)
+        return self._result
 
     async def secure_await(  # type: ignore[return]  # Because mypy is stupid, idk.
         self,
         awaitable_to_secure: Awaitable[T],
-        __auto_set_expected_signatures__: bool = True,
     ) -> ResultType[T]:
         """
         This method awaits the given awaitable and handles its errors.
@@ -197,62 +230,13 @@ class Catcher(Generic[T]):
         """
         try:
             result = await awaitable_to_secure
-
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_success_callback()
-            return self.handle_success_case(result)
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_error_callback()
-            return self.handle_error_case(error)
-        finally:
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_finalize_callback()
-            self.handle_finalize_case()
-
-    async def secure_call_coroutine(  # type: ignore[return]  # Because mypy is stupid, idk.
-        self,
-        callable_to_secure: Callable[_P, Awaitable[T]],
-        *args: _P.args,
-        __auto_set_expected_signatures__: bool = True,
-        **kwargs: _P.kwargs,
-    ) -> ResultType[T]:
-        """
-        This method calls and awaits the given coroutine with the given arguments and handles its errors.
-        If the coroutine raises an error, the on_error callback will be called and the value if on_error_return_always
-        will be returned.
-        If the coroutine does not raise an error, the on_success callback will be called (the return value will be
-        provided to the callback if it receives an argument) and the return value will be propagated.
-        The on_finalize callback will be called in both cases and after the other callbacks.
-        """
-        try:
-            result = await callable_to_secure(*args, **kwargs)
-
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_success_callback(inspect.signature(callable_to_secure))
-            return self.handle_success_case(
-                result,
-                *args,
-                **kwargs,
-            )
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_error_callback(inspect.signature(callable_to_secure))
-            return self.handle_error_case(
-                error,
-                *args,
-                **kwargs,
-            )
-        finally:
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_finalize_callback(inspect.signature(callable_to_secure))
-            self.handle_finalize_case(
-                *args,
-                **kwargs,
-            )
+            self._result = PositiveResult(result=result)
+        except BaseException as error:  # pylint: disable=broad-exception-caught
+            self._result = NegativeResult(error=error, result=self.on_error_return_always)
+        return self._result
 
     @contextmanager
-    def secure_context(self, __auto_set_expected_signatures__: bool = True) -> Iterator[Self]:
+    def secure_context(self) -> Iterator[Self]:
         """
         This context manager catches all errors inside the context and calls the corresponding callbacks.
         If the context raises an error, the on_error callback will be called.
@@ -264,15 +248,6 @@ class Catcher(Generic[T]):
         """
         try:
             yield self
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_success_callback(provide_return_annotation_as_param=False)
-            if self.on_success is not None:
-                self.on_success()
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_error_callback()
-            self.handle_error_case(error)
-        finally:
-            if __auto_set_expected_signatures__:
-                self._auto_set_expected_signature_of_finalize_callback()
-            self.handle_finalize_case()
+            self._result = PositiveResult(result=UNSET)
+        except BaseException as error:  # pylint: disable=broad-exception-caught
+            self._result = NegativeResult(error=error, result=self.on_error_return_always)

@@ -3,15 +3,13 @@ This module defines the types used in the error_handler module.
 """
 
 import inspect
-from abc import ABC
-from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Generic, ParamSpec, TypeAlias, TypeVar
+from typing import Awaitable, Callable, ParamSpec, TypeAlias, TypeVar
 
 T = TypeVar("T")
 P = ParamSpec("P")
 
 
-class Singleton(type):
+class SingletonMeta(type):
     """
     A metaclass implementing the singleton pattern.
     """
@@ -51,7 +49,7 @@ class Singleton(type):
 
 
 # pylint: disable=too-few-public-methods
-class ErroredType(metaclass=Singleton):
+class ErroredType(metaclass=SingletonMeta):
     """
     This type is meant to be used as singleton. Do not instantiate it on your own.
     The instance below represents an errored result.
@@ -59,38 +57,12 @@ class ErroredType(metaclass=Singleton):
 
 
 # pylint: disable=too-few-public-methods
-class _UnsetType(metaclass=Singleton):
+class _UnsetType(metaclass=SingletonMeta):
     """
     This type is meant to be used as singleton. Do not instantiate it on your own.
     The instance below represents an unset value. It is needed as default value since the respective
     parameters can be of any type (including None).
     """
-
-
-@dataclass
-class Result(Generic[T], ABC):
-    """
-    Represents a result of a function call.
-    """
-
-
-@dataclass
-class PositiveResult(Result[T]):
-    """
-    Represents a successful result.
-    """
-
-    result: T
-
-
-@dataclass
-class NegativeResult(Result[T]):
-    """
-    Represents an errored result.
-    """
-
-    result: T | ErroredType
-    error: Exception
 
 
 UNSET = _UnsetType()
@@ -103,8 +75,8 @@ Represents an errored result. It is used to be able to return something in error
 for more information.
 """
 
+
 FunctionType: TypeAlias = Callable[P, T]
 AsyncFunctionType: TypeAlias = Callable[P, Awaitable[T]]
 SecuredFunctionType: TypeAlias = Callable[P, T | ErroredType]
 SecuredAsyncFunctionType: TypeAlias = Callable[P, Awaitable[T | ErroredType]]
-ResultType: TypeAlias = PositiveResult[T] | NegativeResult[T]

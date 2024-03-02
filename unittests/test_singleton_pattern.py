@@ -1,11 +1,11 @@
 import pytest
 
-from error_handler.types import Singleton
+from error_handler.types import SingletonMeta
 
 
 class TestSingleton:
     def test_singleton(self):
-        class MySingleton(metaclass=Singleton):
+        class MySingleton(metaclass=SingletonMeta):
             def __init__(self):
                 self.x = 7
 
@@ -20,7 +20,7 @@ class TestSingleton:
     def test_singleton_with_args(self):
         with pytest.raises(AttributeError) as error_info:
 
-            class _(metaclass=Singleton):
+            class _(metaclass=SingletonMeta):
                 def __init__(self, x: int):
                     self.x = x
 
