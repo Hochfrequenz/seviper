@@ -32,14 +32,14 @@ class TestCallbackErrors:
         def on_finalize_wrong_signature():
             pass
 
-        def on_success_callback(_: str, __: str):
+        def on_error_callback(_: BaseException, __: str):
             raise ValueError("This is a test error")
 
         @error_handler.decorator(
-            on_success=on_success_callback, on_error=assert_not_called, on_finalize=on_finalize_wrong_signature
+            on_success=assert_not_called, on_error=on_error_callback, on_finalize=on_finalize_wrong_signature
         )
         def func(hello: str) -> str:
-            return f"Hello {hello}"
+            raise ValueError(f"This is a test error {hello}")
 
         with pytest.raises(BaseExceptionGroup) as error:
             func("World!")
@@ -56,3 +56,4 @@ class TestCallbackErrors:
         assert "on_finalize_wrong_signature(hello: str) -> Any" in str(wrong_signature_error)
         assert isinstance(value_error, ValueError)
         assert str(value_error) == "This is a test error"
+        assert "This is a test error World!" in str(error.value.__context__)
