@@ -66,10 +66,10 @@ class TestErrorHandlerDecorator:
         on_success_callback, success_tracker = create_callback_tracker()
 
         @error_handler.decorator(on_success=on_success_callback, on_error=assert_not_called)
-        def async_function(hello: str) -> str:
+        def func(hello: str) -> str:
             return f"Hello {hello}"
 
-        result = async_function("World!")
+        result = func("World!")
         assert result == success_tracker[0][0][0] == "Hello World!"
         assert success_tracker[0][0][1] == "World!"
 
@@ -244,13 +244,13 @@ class TestErrorHandlerDecorator:
             on_fail=assert_not_called,
             retry_stepping_func=retry_stepping_func,
         )
-        def sync_function(hello: str) -> str:
+        def func(hello: str) -> str:
             nonlocal retry_counter
             if retry_counter < 2:
                 raise ValueError(retry_counter)
             return f"Hello {hello}"
 
-        result = sync_function("world")
+        result = func("world")
 
         assert retry_counter == 2
         assert [error.args[0] for (error, _, __), ___ in error_tracker] == [0, 1]
