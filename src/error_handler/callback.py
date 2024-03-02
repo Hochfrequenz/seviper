@@ -88,7 +88,7 @@ class Callback(Generic[_P, _T]):
             # I decided to leave this out because the original exception is less helpful and spams the stack trace.
             # Please read: https://docs.python.org/3/library/exceptions.html#BaseException.__suppress_context__
             raise TypeError(
-                f"Arguments do not match signature of callback '{self.callback.__name__}'. "
+                f"Arguments do not match signature of callback {self.callback.__name__}{self.actual_signature_str}. "
                 f"Callback function must match signature: {self.callback.__name__}{self.expected_signature_str}"
             ) from None
         return self.callback(*filled_signature.args, **filled_signature.kwargs)
