@@ -7,11 +7,11 @@ import functools
 import inspect
 import logging
 import time
-from typing import Any, Callable, Concatenate, ParamSpec, TypeGuard, TypeVar, cast
+from typing import Any, Callable, Concatenate, Generator, ParamSpec, TypeGuard, TypeVar
 
 from .callback import Callback, ErrorCallback, SuccessCallback
 from .core import Catcher
-from .result import CallbackResultType, PositiveResult
+from .result import CallbackResultType, PositiveResult, ResultType
 from .types import (
     ERRORED,
     AsyncFunctionType,
@@ -151,54 +151,70 @@ def retry_on_error(
 
         # pylint: disable=unsubscriptable-object
         catcher_executor = Catcher[_T](on_error=on_error_callback)
-        catcher_retrier = Catcher[tuple[_T, int]](
+        catcher_retrier = Catcher[_T](
             on_success=on_success_callback,
             on_error=on_fail_callback,
             on_finalize=on_finalize_callback,
             suppress_recalling_on_error=False,
         )
+        retry_count = 0
+
+        def retry_generator(*args: _P.args, **kwargs: _P.kwargs) -> Generator[int, ResultType[_T], _T]:
+            nonlocal retry_count
+            for retry_count_i in range(max_retries):
+                result: ResultType[_T] = yield retry_count_i
+                retry_count = retry_count_i
+                if isinstance(result, PositiveResult):
+                    assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
+                    return result.result
+                callback_summary = catcher_executor.handle_result_and_call_callbacks(
+                    result, retry_count_i, *args, **kwargs
+                )
+                assert (
+                    callback_summary.callback_result_types.error == CallbackResultType.SUCCESS
+                ), "Internal error: on_error callback was not successful but didn't raise exception"
+                if callback_summary.callback_return_values.error is True:
+                    yield retry_count_i
+                    continue
+                # Should not retry
+                raise result.error
+
+            retry_count = max_retries
+            error = RuntimeError(f"Too many retries ({max_retries}) for {callable_to_secure.__name__}")
+            raise error
+
+        def handle_result_and_call_callbacks(result: ResultType[_T], *args: _P.args, **kwargs: _P.kwargs) -> _T:
+            if isinstance(result, PositiveResult):
+                assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
+                catcher_retrier.handle_success_case(
+                    result.result,
+                    retry_count,
+                    *args,
+                    **kwargs,
+                )
+                return result.result
+
+            catcher_retrier.handle_error_case(result.error, retry_count, *args, **kwargs)
+            raise result.error
 
         if iscoroutinefunction(callable_to_secure):
 
-            async def retry_function_async(*args: _P.args, **kwargs: _P.kwargs) -> tuple[_T, int]:
-                for retry_count in range(max_retries):
-                    result = await catcher_executor.secure_await(callable_to_secure(*args, **kwargs))
-                    if isinstance(result, PositiveResult):
-                        assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
-                        return result.result, retry_count
-                    callback_summary = catcher_executor.handle_result_and_call_callbacks(
-                        result, retry_count, *args, **kwargs
-                    )
-                    assert (
-                        callback_summary.callback_result_types.error == CallbackResultType.SUCCESS
-                    ), "Internal error: on_error callback was not successful but didn't raise exception"
-                    if callback_summary.callback_return_values.error is True:
-                        await asyncio.sleep(retry_stepping_func(retry_count))
-                        continue
-                    # Should not retry
-                    result.error.__retry_count__ = retry_count  # type: ignore[attr-defined]
-                    raise result.error
-
-                error = RuntimeError(f"Too many retries ({max_retries}) for {callable_to_secure.__name__}")
-                error.__retry_count__ = max_retries  # type: ignore[attr-defined]
-                raise error
+            async def retry_function_async(*args: _P.args, **kwargs: _P.kwargs) -> _T:
+                generator = retry_generator(*args, **kwargs)
+                while True:
+                    next(generator)
+                    try:
+                        retry_count_ = generator.send(
+                            await catcher_executor.secure_await(callable_to_secure(*args, **kwargs))
+                        )
+                    except StopIteration as stop_iteration:
+                        return stop_iteration.value
+                    await asyncio.sleep(retry_stepping_func(retry_count_))
 
             @functools.wraps(callable_to_secure)
             async def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T:
                 result = await catcher_retrier.secure_await(retry_function_async(*args, **kwargs))
-                if isinstance(result, PositiveResult):
-                    assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
-                    catcher_retrier.handle_success_case(
-                        result.result[0],  # type: ignore[arg-type]  # This is intended as little "hack" to spare code
-                        result.result[1],
-                        *args,
-                        **kwargs,
-                    )
-                    return result.result[0]
-                if not hasattr(result.error, "__retry_count__"):
-                    raise RuntimeError("Internal error: retry count is not set") from result.error
-                catcher_retrier.handle_error_case(result.error, result.error.__retry_count__, *args, **kwargs)
-                raise result.error
+                return handle_result_and_call_callbacks(result, *args, **kwargs)
 
         else:
             logger.warning(
@@ -207,45 +223,22 @@ def retry_on_error(
                 "Please consider decorating an async function instead."
             )
 
-            def retry_function_sync(*args: _P.args, **kwargs: _P.kwargs) -> tuple[_T, int]:
-                for retry_count in range(max_retries):
-                    result = catcher_executor.secure_call(callable_to_secure, *args, **kwargs)  # type: ignore[arg-type]
-                    if isinstance(result, PositiveResult):
-                        assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
-                        return result.result, retry_count
-                    callback_summary = catcher_executor.handle_result_and_call_callbacks(
-                        result, retry_count, *args, **kwargs
-                    )
-                    assert (
-                        callback_summary.callback_result_types.error == CallbackResultType.SUCCESS
-                    ), "Internal error: on_error callback was not successful but didn't raise exception"
-                    if callback_summary.callback_return_values.error is True:
-                        time.sleep(retry_stepping_func(retry_count))
-                        continue
-                    # Should not retry
-                    result.error.__retry_count__ = retry_count  # type: ignore[attr-defined]
-                    raise result.error
-
-                error = RuntimeError(f"Too many retries ({max_retries}) for {callable_to_secure.__name__}")
-                error.__retry_count__ = max_retries  # type: ignore[attr-defined]
-                raise error
+            def retry_function_sync(*args: _P.args, **kwargs: _P.kwargs) -> _T:
+                generator = retry_generator(*args, **kwargs)
+                while True:
+                    next(generator)
+                    try:
+                        retry_count_ = generator.send(
+                            catcher_executor.secure_call(callable_to_secure, *args, **kwargs)  # type: ignore[arg-type]
+                        )
+                    except StopIteration as stop_iteration:
+                        return stop_iteration.value
+                    time.sleep(retry_stepping_func(retry_count_))
 
             @functools.wraps(callable_to_secure)
             def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T:
                 result = catcher_retrier.secure_call(retry_function_sync, *args, **kwargs)
-                if isinstance(result, PositiveResult):
-                    assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
-                    catcher_retrier.handle_success_case(
-                        result.result[0],  # type: ignore[arg-type]  # This is intended as little "hack" to spare code
-                        result.result[1],
-                        *args,
-                        **kwargs,
-                    )
-                    return result.result[0]
-                if not hasattr(result.error, "__retry_count__"):
-                    raise RuntimeError("Internal error: retry count is not set") from result.error
-                catcher_retrier.handle_error_case(result.error, result.error.__retry_count__, *args, **kwargs)
-                raise result.error
+                return handle_result_and_call_callbacks(result, *args, **kwargs)
 
         wrapper.__catcher__ = catcher_retrier  # type: ignore[attr-defined]
         wrapper.__original_callable__ = callable_to_secure  # type: ignore[attr-defined]
