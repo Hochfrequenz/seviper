@@ -19,7 +19,7 @@ from .result import (
     ResultType,
     ReturnValues,
 )
-from .types import ERRORED, UNSET, ErroredType, T, _UnsetType
+from .types import ERRORED, UNSET, ErroredType, T, UnsetType
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -154,7 +154,7 @@ class Catcher(Generic[T]):
         """
         return self._call_callback(self.on_finalize, *args, **kwargs)
 
-    def handle_success_case(self, result: T | _UnsetType, *args: Any, **kwargs: Any) -> CallbackSummary:
+    def handle_success_case(self, result: T | UnsetType, *args: Any, **kwargs: Any) -> CallbackSummary:
         """
         This method handles the success case.
         """

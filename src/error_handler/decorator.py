@@ -19,7 +19,7 @@ from .types import (
     FunctionType,
     SecuredAsyncFunctionType,
     SecuredFunctionType,
-    _UnsetType,
+    UnsetType,
 )
 
 _P = ParamSpec("_P")
@@ -75,7 +75,7 @@ def decorator(
             async def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T | ErroredType:
                 result = await catcher.secure_await(callable_to_secure(*args, **kwargs))  # type: ignore[return-value]
                 catcher.handle_result_and_call_callbacks(result, *args, **kwargs)
-                assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
+                assert not isinstance(result.result, UnsetType), "Internal error: result is unset"
                 return result.result
 
                 # Incompatible return value type (got "object", expected "_T")  [return-value]
@@ -91,7 +91,7 @@ def decorator(
                     **kwargs,
                 )
                 catcher.handle_result_and_call_callbacks(result, *args, **kwargs)
-                assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
+                assert not isinstance(result.result, UnsetType), "Internal error: result is unset"
                 return result.result
                 # Incompatible return value type (got "object", expected "_T")  [return-value]
                 # Seems like mypy isn't good enough for this.
@@ -165,7 +165,7 @@ def retry_on_error(
                 result: ResultType[_T] = yield retry_count_i
                 retry_count = retry_count_i
                 if isinstance(result, PositiveResult):
-                    assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
+                    assert not isinstance(result.result, UnsetType), "Internal error: result is unset"
                     return result.result
                 callback_summary = catcher_executor.handle_result_and_call_callbacks(
                     result, retry_count_i, *args, **kwargs
@@ -185,7 +185,7 @@ def retry_on_error(
 
         def handle_result_and_call_callbacks(result: ResultType[_T], *args: _P.args, **kwargs: _P.kwargs) -> _T:
             if isinstance(result, PositiveResult):
-                assert not isinstance(result.result, _UnsetType), "Internal error: result is unset"
+                assert not isinstance(result.result, UnsetType), "Internal error: result is unset"
                 catcher_retrier.handle_success_case(
                     result.result,
                     retry_count,

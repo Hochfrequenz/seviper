@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Generic, TypeAlias
 
-from error_handler.types import UNSET, ErroredType, T, _UnsetType
+from error_handler.types import UNSET, ErroredType, T, UnsetType
 
 
 class CallbackResultType(StrEnum):
@@ -59,7 +59,7 @@ class PositiveResult(Generic[T]):
     Represents a successful result.
     """
 
-    result: T | _UnsetType
+    result: T | UnsetType
 
 
 @dataclass(frozen=True)

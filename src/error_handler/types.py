@@ -57,7 +57,7 @@ class ErroredType(metaclass=SingletonMeta):
 
 
 # pylint: disable=too-few-public-methods
-class _UnsetType(metaclass=SingletonMeta):
+class UnsetType(metaclass=SingletonMeta):
     """
     This type is meant to be used as singleton. Do not instantiate it on your own.
     The instance below represents an unset value. It is needed as default value since the respective
@@ -65,7 +65,7 @@ class _UnsetType(metaclass=SingletonMeta):
     """
 
 
-UNSET = _UnsetType()
+UNSET = UnsetType()
 """
 Represents an unset value. It is used as default value for parameters that can be of any type.
 """
