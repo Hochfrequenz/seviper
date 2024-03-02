@@ -1,7 +1,8 @@
 import pytest
-from utils import assert_not_called, create_callback_tracker
 
 import error_handler
+
+from .utils import assert_not_called, create_callback_tracker
 
 
 class TestCallbackErrors:

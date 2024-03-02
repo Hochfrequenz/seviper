@@ -1,9 +1,9 @@
 import asyncio
 from math import floor
 
-from utils import assert_not_called, create_callback_tracker
-
 import error_handler
+
+from .utils import assert_not_called, create_callback_tracker
 
 
 class TestConcurrency:
@@ -72,3 +72,4 @@ class TestConcurrency:
         assert set(error_tracker_args[:2]) == {(0, 0, "World!"), (1, 0, "world...")}
         assert set(error_tracker_args[2:]) == {(2, 1, "World!"), (3, 1, "world...")}
         assert success_tracker == [(("Hello World!", 2, "World!"), {}), (("Hello world...", 2, "world..."), {})]
+        assert finalize_tracker == [((2, "World!"), {}), ((2, "world..."), {})]
