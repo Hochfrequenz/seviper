@@ -10,7 +10,7 @@ This framework provides several error handlers to catch errors and call callback
 (or successes). It comes fully equipped with:
 
 - A decorator to handle errors in functions or coroutines
-- A decorator to retry a function or coroutine if it fails
+- A decorator to retry a function or coroutine if it fails (can be useful for network requests)
 - A context manager to handle errors in a block of code
 
 Additionally, if you use `aiostream` (e.g. using `pip install seviper[aiostream]`), you can use the following features:
@@ -31,37 +31,40 @@ pip install seviper[aiostream]
 ```
 
 ## Usage
-Here is a complex example as showcase of the features of this library:
+Here is a more or less complex example as showcase of the features of this library:
 
 ```python
 import asyncio
+import logging
+import sys
 import aiostream
 import error_handler
-import logging
 
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
+logger = logging.root
 op = aiostream.stream.iterate(range(10))
 
-def log_error(error: Exception):
+def log_error(error: Exception, num: int):
     """Only log error and reraise it"""
-    logging.error(error)
+    logger.error("double_only_odd_nums_except_5 failed for input %d. ", num)
     raise error
 
 @error_handler.decorator(on_error=log_error)
 async def double_only_odd_nums_except_5(num: int) -> int:
     if num % 2 == 0:
         raise ValueError(num)
-    with error_handler.context_manager(on_success=lambda: logging.info(f"Success: {num}")):
+    with error_handler.context_manager(on_success=lambda: logging.info("Success: %s", num)):
         if num == 5:
             raise RuntimeError("Another unexpected error. Number 5 will not be doubled.")
         num *= 2
     return num
 
-def catch_value_errors(error: Exception):
+def catch_value_errors(error: Exception, _: int):
     if not isinstance(error, ValueError):
         raise error
 
-def log_success(num: int):
-    logging.info(f"Success: {num}")
+def log_success(result_num: int, provided_num: int):
+    logger.info("Success: %d -> %d", provided_num, result_num)
 
 op = op | error_handler.pipe.map(
     double_only_odd_nums_except_5,
@@ -74,6 +77,25 @@ op = op | error_handler.pipe.map(
 result = asyncio.run(aiostream.stream.list(op))
 
 assert result == [2, 6, 5, 14, 18]
+```
+
+This outputs:
+
+```
+ERROR:root:double_only_odd_nums_except_5 failed for input 0.
+INFO:root:Success: 2
+INFO:root:Success: 1 -> 2
+ERROR:root:double_only_odd_nums_except_5 failed for input 2.
+INFO:root:Success: 6
+INFO:root:Success: 3 -> 6
+ERROR:root:double_only_odd_nums_except_5 failed for input 4.
+INFO:root:Success: 5 -> 5
+ERROR:root:double_only_odd_nums_except_5 failed for input 6.
+INFO:root:Success: 14
+INFO:root:Success: 7 -> 14
+ERROR:root:double_only_odd_nums_except_5 failed for input 8.
+INFO:root:Success: 18
+INFO:root:Success: 9 -> 18
 ```
 
 ## How to use this Repository on Your Machine

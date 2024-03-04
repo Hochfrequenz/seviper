@@ -2,6 +2,8 @@ import pytest
 
 import error_handler
 
+from .utils import assert_not_called
+
 
 class TestErrorHandlerContextManager:
     def test_context_manager_error_case(self):
@@ -26,7 +28,7 @@ class TestErrorHandlerContextManager:
             nonlocal succeeded
             succeeded = True
 
-        with error_handler.context_manager(on_success=succeeded_callback):
+        with error_handler.context_manager(on_success=succeeded_callback, on_error=assert_not_called):
             pass
 
         assert succeeded
@@ -40,9 +42,7 @@ class TestErrorHandlerContextManager:
             raise error
 
         with pytest.raises(ValueError) as error:
-            with error_handler.context_manager(
-                on_error=store_error,
-            ):
+            with error_handler.context_manager(on_error=store_error):
                 raise ValueError("This is a test error world")
 
         assert isinstance(catched_error, ValueError)

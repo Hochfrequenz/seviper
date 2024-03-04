@@ -2,18 +2,22 @@
 This module provides a context manager to handle errors in a convenient way.
 """
 
-from typing import Any, Callable, ContextManager
+from contextlib import contextmanager
+from typing import Any, Callable, Iterator
 
+from .callback import Callback, ErrorCallback
 from .core import Catcher
+from .types import UnsetType
 
 
 # pylint: disable=unsubscriptable-object
+@contextmanager
 def context_manager(
     on_success: Callable[[], Any] | None = None,
-    on_error: Callable[[Exception], Any] | Callable[[], Any] | None = None,
+    on_error: Callable[[Exception], Any] | None = None,
     on_finalize: Callable[[], Any] | None = None,
     suppress_recalling_on_error: bool = True,
-) -> ContextManager[Catcher[None]]:
+) -> Iterator[Catcher[UnsetType]]:
     """
     This context manager catches all errors inside the context and calls the corresponding callbacks.
     It is a shorthand for creating a Catcher instance and using its secure_context method.
@@ -24,5 +28,12 @@ def context_manager(
     If suppress_recalling_on_error is True, the on_error callable will not be called if the error were already
     caught by a previous catcher.
     """
-    catcher = Catcher[None](on_success, on_error, on_finalize, suppress_recalling_on_error=suppress_recalling_on_error)
-    return catcher.secure_context()
+    catcher = Catcher[UnsetType](
+        Callback.from_callable(on_success, return_type=Any) if on_success is not None else None,
+        ErrorCallback.from_callable(on_error, return_type=Any) if on_error is not None else None,
+        Callback.from_callable(on_finalize, return_type=Any) if on_finalize is not None else None,
+        suppress_recalling_on_error=suppress_recalling_on_error,
+    )
+    with catcher.secure_context():
+        yield catcher
+    catcher.handle_result_and_call_callbacks(catcher.result)

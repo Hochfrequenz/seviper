@@ -4,9 +4,9 @@ It also provides pipable operators to handle errors inside an aiostream pipeline
 """
 
 import importlib
+from typing import TYPE_CHECKING
 
 from .context_manager import context_manager
-from .core import Catcher
 from .decorator import decorator, retry_on_error
 from .types import (
     ERRORED,
@@ -14,13 +14,13 @@ from .types import (
     AsyncFunctionType,
     ErroredType,
     FunctionType,
-    NegativeResult,
-    PositiveResult,
-    ResultType,
     SecuredAsyncFunctionType,
     SecuredFunctionType,
     UnsetType,
 )
 
-stream = importlib.import_module("error_handler.stream")
-pipe = importlib.import_module("error_handler.pipe")
+if TYPE_CHECKING:
+    from . import pipe, stream
+else:
+    stream = importlib.import_module("error_handler.stream")
+    pipe = importlib.import_module("error_handler.pipe")

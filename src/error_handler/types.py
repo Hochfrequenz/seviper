@@ -3,15 +3,16 @@ This module defines the types used in the error_handler module.
 """
 
 import inspect
-from abc import ABC
-from dataclasses import dataclass
-from typing import Awaitable, Callable, Generic, ParamSpec, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar
+
+if TYPE_CHECKING:
+    from .core import Catcher
 
 T = TypeVar("T")
 P = ParamSpec("P")
 
 
-class Singleton(type):
+class SingletonMeta(type):
     """
     A metaclass implementing the singleton pattern.
     """
@@ -51,7 +52,7 @@ class Singleton(type):
 
 
 # pylint: disable=too-few-public-methods
-class ErroredType(metaclass=Singleton):
+class ErroredType(metaclass=SingletonMeta):
     """
     This type is meant to be used as singleton. Do not instantiate it on your own.
     The instance below represents an errored result.
@@ -59,38 +60,12 @@ class ErroredType(metaclass=Singleton):
 
 
 # pylint: disable=too-few-public-methods
-class UnsetType(metaclass=Singleton):
+class UnsetType(metaclass=SingletonMeta):
     """
     This type is meant to be used as singleton. Do not instantiate it on your own.
     The instance below represents an unset value. It is needed as default value since the respective
     parameters can be of any type (including None).
     """
-
-
-@dataclass
-class Result(Generic[T], ABC):
-    """
-    Represents a result of a function call.
-    """
-
-
-@dataclass
-class PositiveResult(Result[T]):
-    """
-    Represents a successful result.
-    """
-
-    result: T
-
-
-@dataclass
-class NegativeResult(Result[T]):
-    """
-    Represents an errored result.
-    """
-
-    result: T | ErroredType
-    error: Exception
 
 
 UNSET = UnsetType()
@@ -103,8 +78,46 @@ Represents an errored result. It is used to be able to return something in error
 for more information.
 """
 
+
 FunctionType: TypeAlias = Callable[P, T]
 AsyncFunctionType: TypeAlias = Callable[P, Awaitable[T]]
-SecuredFunctionType: TypeAlias = Callable[P, T | ErroredType]
-SecuredAsyncFunctionType: TypeAlias = Callable[P, Awaitable[T | ErroredType]]
-ResultType: TypeAlias = PositiveResult[T] | NegativeResult[T]
+
+
+class SecuredFunctionType(Protocol[P, T]):
+    """
+    This type represents a secured function.
+    """
+
+    __catcher__: "Catcher[T]"
+    __original_callable__: FunctionType[P, T]
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T | ErroredType: ...
+
+
+class SecuredAsyncFunctionType(Protocol[P, T]):
+    """
+    This type represents a secured async function.
+    """
+
+    __catcher__: "Catcher[T]"
+    __original_callable__: AsyncFunctionType[P, T]
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Awaitable[T | ErroredType]: ...
+
+
+def is_secured(
+    func: FunctionType[P, T] | SecuredFunctionType[P, T] | AsyncFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
+) -> TypeGuard[SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]]:
+    """
+    Returns True if the given function is secured, False otherwise.
+    """
+    return hasattr(func, "__catcher__") and hasattr(func, "__original_callable__")
+
+
+def is_unsecured(
+    func: FunctionType[P, T] | AsyncFunctionType[P, T] | SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
+) -> TypeGuard[FunctionType[P, T] | AsyncFunctionType[P, T]]:
+    """
+    Returns True if the given function is not secured, False otherwise.
+    """
+    return not hasattr(func, "__catcher__") or not hasattr(func, "__original_callable__")
