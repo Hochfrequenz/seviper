@@ -1,5 +1,7 @@
 """
 This module contains the Callback class, which is used to wrap a callable and its expected signature.
+The expected signature is only used to give nicer error messages when the callback is called with the wrong
+arguments. Just in case that the type checker is not able to spot callback functions with wrong signatures.
 """
 
 import inspect

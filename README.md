@@ -10,7 +10,7 @@ This framework provides several error handlers to catch errors and call callback
 (or successes). It comes fully equipped with:
 
 - A decorator to handle errors in functions or coroutines
-- A decorator to retry a function or coroutine if it fails
+- A decorator to retry a function or coroutine if it fails (can be useful for network requests)
 - A context manager to handle errors in a block of code
 
 Additionally, if you use `aiostream` (e.g. using `pip install seviper[aiostream]`), you can use the following features:
@@ -31,7 +31,7 @@ pip install seviper[aiostream]
 ```
 
 ## Usage
-Here is a complex example as showcase of the features of this library:
+Here is a more or less complex example as showcase of the features of this library:
 
 ```python
 import asyncio
