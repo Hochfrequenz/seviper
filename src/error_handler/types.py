@@ -3,7 +3,7 @@ This module defines the types used in the error_handler module.
 """
 
 import inspect
-from typing import TYPE_CHECKING, Awaitable, Callable, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar, overload
+from typing import TYPE_CHECKING, Awaitable, Callable, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar
 
 if TYPE_CHECKING:
     from .core import Catcher
