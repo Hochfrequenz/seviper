@@ -4,7 +4,7 @@
 #
 #    pip-compile '.\dev_requirements\requirements-tests.in'
 #
-colorama==0.4.6
+exceptiongroup==1.2.0
     # via pytest
 iniconfig==2.0.0
     # via pytest
@@ -12,9 +12,11 @@ packaging==23.0
     # via pytest
 pluggy==1.4.0
     # via pytest
-pytest==8.0.2
+pytest==8.1.0
     # via
-    #   -r .\dev_requirements\requirements-tests.in
+    #   -r dev_requirements/requirements-tests.in
     #   pytest-asyncio
 pytest-asyncio==0.23.5
-    # via -r .\dev_requirements\requirements-tests.in
+    # via -r dev_requirements/requirements-tests.in
+tomli==2.0.1
+    # via pytest
