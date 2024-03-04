@@ -112,6 +112,30 @@ class TestErrorHandlerDecorator:
         assert catched_error is error.value
         assert str(catched_error) == "This is a test error world"
 
+    def test_decorator_method_with_self_argument(self):
+        error_callback, error_tracker = create_callback_tracker()
+        finalize_callback, finalize_tracker = create_callback_tracker()
+
+        class MyClass:
+            def __init__(self, value: int):
+                self.value = value
+
+            @error_handler.decorator(
+                on_error=error_callback,
+                on_finalize=finalize_callback,
+                on_success=assert_not_called,
+                on_error_return_always=error_handler.ERRORED,
+            )
+            def func(self, hello: str) -> None:
+                raise ValueError(f"This is a test error {hello}")
+
+        instance = MyClass(42)
+        result = instance.func("world")
+        assert result == error_handler.ERRORED
+        assert str(error_tracker[0][0][0]) == "This is a test error world"
+        assert error_tracker == [((error_tracker[0][0][0], instance, "world"), {})]
+        assert finalize_tracker == [((instance, "world"), {})]
+
     async def test_retry_coroutine_return_after_retries(self):
         retry_counter = 0
 
