@@ -3,7 +3,10 @@ This module defines the types used in the error_handler module.
 """
 
 import inspect
-from typing import Awaitable, Callable, ParamSpec, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Awaitable, Callable, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar, overload
+
+if TYPE_CHECKING:
+    from .core import Catcher
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -78,5 +81,43 @@ for more information.
 
 FunctionType: TypeAlias = Callable[P, T]
 AsyncFunctionType: TypeAlias = Callable[P, Awaitable[T]]
-SecuredFunctionType: TypeAlias = Callable[P, T | ErroredType]
-SecuredAsyncFunctionType: TypeAlias = Callable[P, Awaitable[T | ErroredType]]
+
+
+class SecuredFunctionType(Protocol[P, T]):
+    """
+    This type represents a secured function.
+    """
+
+    __catcher__: "Catcher[T]"
+    __original_callable__: FunctionType[P, T]
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T | ErroredType: ...
+
+
+class SecuredAsyncFunctionType(Protocol[P, T]):
+    """
+    This type represents a secured async function.
+    """
+
+    __catcher__: "Catcher[T]"
+    __original_callable__: AsyncFunctionType[P, T]
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Awaitable[T | ErroredType]: ...
+
+
+def is_secured(
+    func: FunctionType[P, T] | SecuredFunctionType[P, T] | AsyncFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
+) -> TypeGuard[SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]]:
+    """
+    Returns True if the given function is secured, False otherwise.
+    """
+    return hasattr(func, "__catcher__") and hasattr(func, "__original_callable__")
+
+
+def is_unsecured(
+    func: FunctionType[P, T] | AsyncFunctionType[P, T] | SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
+) -> TypeGuard[FunctionType[P, T] | AsyncFunctionType[P, T]]:
+    """
+    Returns True if the given function is not secured, False otherwise.
+    """
+    return not hasattr(func, "__catcher__") or not hasattr(func, "__original_callable__")

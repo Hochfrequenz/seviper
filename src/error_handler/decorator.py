@@ -7,7 +7,7 @@ import functools
 import inspect
 import logging
 import time
-from typing import Any, Callable, Concatenate, Generator, ParamSpec, TypeGuard, TypeVar
+from typing import Any, Callable, Concatenate, Generator, ParamSpec, TypeGuard, TypeVar, cast
 
 from .callback import Callback, ErrorCallback, SuccessCallback
 from .core import Catcher
@@ -73,19 +73,16 @@ def decorator(
 
             @functools.wraps(callable_to_secure)
             async def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T | ErroredType:
-                result = await catcher.secure_await(callable_to_secure(*args, **kwargs))  # type: ignore[return-value]
+                result = await catcher.secure_await(callable_to_secure(*args, **kwargs))
                 catcher.handle_result_and_call_callbacks(result, *args, **kwargs)
                 assert not isinstance(result.result, UnsetType), "Internal error: result is unset"
                 return result.result
-
-                # Incompatible return value type (got "object", expected "_T")  [return-value]
-                # Seems like mypy isn't good enough for this.
 
         else:
 
             @functools.wraps(callable_to_secure)
             def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _T | ErroredType:
-                result = catcher.secure_call(  # type: ignore[return-value]
+                result = catcher.secure_call(
                     callable_to_secure,  # type: ignore[arg-type]
                     *args,
                     **kwargs,
@@ -93,12 +90,11 @@ def decorator(
                 catcher.handle_result_and_call_callbacks(result, *args, **kwargs)
                 assert not isinstance(result.result, UnsetType), "Internal error: result is unset"
                 return result.result
-                # Incompatible return value type (got "object", expected "_T")  [return-value]
-                # Seems like mypy isn't good enough for this.
 
-        wrapper.__catcher__ = catcher  # type: ignore[attr-defined]
-        wrapper.__original_callable__ = callable_to_secure  # type: ignore[attr-defined]
-        return wrapper
+        return_func = cast(SecuredFunctionType[_P, _T] | SecuredAsyncFunctionType[_P, _T], wrapper)
+        return_func.__catcher__ = catcher
+        return_func.__original_callable__ = callable_to_secure
+        return return_func
 
     return decorator_inner
 
@@ -114,7 +110,9 @@ def retry_on_error(
     on_fail: Callable[Concatenate[Exception, int, _P], Any] | None = None,
     on_finalize: Callable[Concatenate[int, _P], Any] | None = None,
     logger: logging.Logger = logging.getLogger(__name__),
-) -> Callable[[FunctionType[_P, _T]], FunctionType[_P, _T]]:
+) -> Callable[
+    [FunctionType[_P, _T] | AsyncFunctionType[_P, _T]], SecuredFunctionType[_P, _T] | SecuredAsyncFunctionType[_P, _T]
+]:
     """
     This decorator retries a callable (sync or async) on error.
     The retry_stepping_func is called with the retry count and should return the time to wait until the next retry.
@@ -240,8 +238,9 @@ def retry_on_error(
                 result = catcher_retrier.secure_call(retry_function_sync, *args, **kwargs)
                 return handle_result_and_call_callbacks(result, *args, **kwargs)
 
-        wrapper.__catcher__ = catcher_retrier  # type: ignore[attr-defined]
-        wrapper.__original_callable__ = callable_to_secure  # type: ignore[attr-defined]
-        return wrapper
+        return_func = cast(SecuredFunctionType[_P, _T] | SecuredAsyncFunctionType[_P, _T], wrapper)
+        return_func.__catcher__ = catcher_retrier
+        return_func.__original_callable__ = callable_to_secure
+        return return_func
 
-    return decorator_inner  # type: ignore[return-value]
+    return decorator_inner
