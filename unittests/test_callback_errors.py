@@ -12,7 +12,7 @@ class TestCallbackErrors:
         def on_finalize_wrong_signature():
             pass
 
-        @error_handler.decorator(
+        @error_handler.decorator_as_result(
             on_success=on_success_callback, on_error=assert_not_called, on_finalize=on_finalize_wrong_signature
         )
         def func(hello: str) -> str:
@@ -36,7 +36,7 @@ class TestCallbackErrors:
         def on_error_callback(_: BaseException, __: str):
             raise ValueError("This is a test error")
 
-        @error_handler.decorator(
+        @error_handler.decorator_as_result(
             on_success=assert_not_called, on_error=on_error_callback, on_finalize=on_finalize_wrong_signature
         )
         def func(hello: str) -> str:

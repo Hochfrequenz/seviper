@@ -4,9 +4,11 @@ This module contains classes to encapsulate some information about the result of
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Generic, TypeAlias
+from typing import Any, Generic, TypeAlias, TypeVar
 
-from error_handler.types import UNSET, ErroredType, T, UnsetType
+from error_handler.types import UNSET
+
+T = TypeVar("T")
 
 
 class CallbackResultType(StrEnum):
@@ -59,7 +61,7 @@ class PositiveResult(Generic[T]):
     Represents a successful result.
     """
 
-    result: T | UnsetType
+    result: T
 
 
 @dataclass(frozen=True)
@@ -68,7 +70,6 @@ class NegativeResult(Generic[T]):
     Represents an errored result.
     """
 
-    result: T | ErroredType
     error: BaseException
 
 

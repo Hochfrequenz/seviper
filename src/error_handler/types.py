@@ -3,10 +3,11 @@ This module defines the types used in the error_handler module.
 """
 
 import inspect
-from typing import TYPE_CHECKING, Awaitable, Callable, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar
 
 if TYPE_CHECKING:
     from .core import Catcher
+    from .result import ResultType
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -52,14 +53,6 @@ class SingletonMeta(type):
 
 
 # pylint: disable=too-few-public-methods
-class ErroredType(metaclass=SingletonMeta):
-    """
-    This type is meant to be used as singleton. Do not instantiate it on your own.
-    The instance below represents an errored result.
-    """
-
-
-# pylint: disable=too-few-public-methods
 class UnsetType(metaclass=SingletonMeta):
     """
     This type is meant to be used as singleton. Do not instantiate it on your own.
@@ -72,15 +65,10 @@ UNSET = UnsetType()
 """
 Represents an unset value. It is used as default value for parameters that can be of any type.
 """
-ERRORED = ErroredType()
-"""
-Represents an errored result. It is used to be able to return something in error cases. See Catcher.secure_call
-for more information.
-"""
 
 
 FunctionType: TypeAlias = Callable[P, T]
-AsyncFunctionType: TypeAlias = Callable[P, Awaitable[T]]
+AsyncFunctionType: TypeAlias = Callable[P, Coroutine[Any, Any, T]]
 
 
 class SecuredFunctionType(Protocol[P, T]):
@@ -91,7 +79,7 @@ class SecuredFunctionType(Protocol[P, T]):
     __catcher__: "Catcher[T]"
     __original_callable__: FunctionType[P, T]
 
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T | ErroredType: ...
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> "ResultType[T]": ...
 
 
 class SecuredAsyncFunctionType(Protocol[P, T]):
@@ -102,22 +90,13 @@ class SecuredAsyncFunctionType(Protocol[P, T]):
     __catcher__: "Catcher[T]"
     __original_callable__: AsyncFunctionType[P, T]
 
-    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> Awaitable[T | ErroredType]: ...
+    async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> "ResultType[T]": ...
 
 
 def is_secured(
     func: FunctionType[P, T] | SecuredFunctionType[P, T] | AsyncFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
 ) -> TypeGuard[SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]]:
     """
-    Returns True if the given function is secured, False otherwise.
+    Returns True if the given function is secured and returns a ResultType[T]. False otherwise.
     """
     return hasattr(func, "__catcher__") and hasattr(func, "__original_callable__")
-
-
-def is_unsecured(
-    func: FunctionType[P, T] | AsyncFunctionType[P, T] | SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
-) -> TypeGuard[FunctionType[P, T] | AsyncFunctionType[P, T]]:
-    """
-    Returns True if the given function is not secured, False otherwise.
-    """
-    return not hasattr(func, "__catcher__") or not hasattr(func, "__original_callable__")
