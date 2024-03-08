@@ -79,8 +79,8 @@ if IS_AIOSTREAM_INSTALLED:
         )
         result_values: AsyncIterator[U] = aiostream.stream.map.raw(
             positive_results,
-            lambda result: (
-                result.result if isinstance(result, PositiveResult) else result  # type: ignore[arg-type, misc]
+            lambda result: (  # type: ignore[arg-type, misc]
+                result.result if isinstance(result, PositiveResult) else result
             ),
         )
         return result_values
