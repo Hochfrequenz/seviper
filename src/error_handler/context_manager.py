@@ -13,6 +13,7 @@ from .types import UnsetType
 # pylint: disable=unsubscriptable-object
 @contextmanager
 def context_manager(
+    *,
     on_success: Callable[[], Any] | None = None,
     on_error: Callable[[Exception], Any] | None = None,
     on_finalize: Callable[[], Any] | None = None,

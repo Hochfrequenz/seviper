@@ -82,6 +82,7 @@ class Decorator(Protocol[_P, _T]):
 
 # pylint: disable=too-many-arguments
 def decorator_as_result(
+    *,
     on_success: Callable[Concatenate[_T, _P], Any] | None = None,
     on_error: Callable[Concatenate[Exception, _P], Any] | None = None,
     on_finalize: Callable[_P, Any] | None = None,
@@ -148,6 +149,7 @@ def decorator_as_result(
 
 # pylint: disable=too-many-arguments, too-many-locals
 def retry_on_error(
+    *,
     on_error: Callable[Concatenate[Exception, int, _P], bool],
     retry_stepping_func: Callable[[int], float] = lambda retry_count: 1.71**retry_count,
     # <-- with max_retries = 10 the whole decorator may wait up to 5 minutes.
