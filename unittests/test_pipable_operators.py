@@ -63,22 +63,10 @@ class TestErrorHandlerPipableOperators:
         assert set(elements) == {1, 3, 5}
         assert errored_nums == {2, 4, 6}
 
-    async def test_secured_map_stream_double_secure_invalid_return_value(self):
-        op = stream.iterate([1, 2, 3, 4, 5, 6])
-
-        @error_handler.decorator(on_error_return_always=0)
-        def return_1(_: int) -> int:
-            return 1
-
-        with pytest.raises(ValueError) as error:
-            _ = error_handler.stream.map(op, return_1)
-
-        assert "The given function is already secured but does not return ERRORED in error case" in str(error.value)
-
     async def test_secured_map_stream_double_secure_invalid_arguments(self):
         op = stream.iterate([1, 2, 3, 4, 5, 6])
 
-        @error_handler.decorator()
+        @error_handler.decorator_as_result()
         def return_1(_: int) -> int:
             return 1
 
@@ -93,7 +81,7 @@ class TestErrorHandlerPipableOperators:
 
         op = stream.iterate([1, 2, 3, 4, 5, 6])
 
-        @error_handler.decorator(on_error=error_callback, on_success=success_callback)
+        @error_handler.decorator_as_result(on_error=error_callback, on_success=success_callback)
         def raise_for_even(num: int) -> int:
             if num % 2 == 0:
                 raise ValueError(num)

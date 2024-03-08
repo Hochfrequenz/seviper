@@ -15,11 +15,10 @@ class TestErrorHandlerDecorator:
         error_callback, error_tracker = create_callback_tracker()
         finalize_callback, finalize_tracker = create_callback_tracker()
 
-        @error_handler.decorator(
+        @error_handler.decorator_as_result(
             on_error=error_callback,
             on_finalize=finalize_callback,
             on_success=assert_not_called,
-            on_error_return_always=error_handler.ERRORED,
         )
         async def async_function(hello: str) -> None:
             raise ValueError(f"This is a test error {hello}")
@@ -28,7 +27,7 @@ class TestErrorHandlerDecorator:
         result = await awaitable
         assert str(error_tracker[0][0][0]) == "This is a test error world"
         assert str(error_tracker[0][0][1]) == "world"
-        assert result == error_handler.ERRORED
+        assert isinstance(result, error_handler.NegativeResult)
         assert finalize_tracker == [(("world",), {})]
 
     async def test_decorator_coroutine_success_case(self):
@@ -52,7 +51,7 @@ class TestErrorHandlerDecorator:
     def test_decorator_function_error_case(self):
         error_callback, error_tracker = create_callback_tracker()
 
-        @error_handler.decorator(on_error=error_callback, on_success=assert_not_called)
+        @error_handler.decorator(on_error=error_callback, on_success=assert_not_called, on_error_return_always=None)
         def func(hello: str) -> None:
             raise ValueError(f"This is a test error {hello}")
 
@@ -60,7 +59,7 @@ class TestErrorHandlerDecorator:
         assert isinstance(error_tracker[0][0][0], ValueError)
         assert str(error_tracker[0][0][0]) == "This is a test error world"
         assert error_tracker[0][0][1] == "world"
-        assert result == error_handler.ERRORED
+        assert result is None
 
     def test_decorator_function_success_case(self):
         on_success_callback, success_tracker = create_callback_tracker()
@@ -81,7 +80,7 @@ class TestErrorHandlerDecorator:
             catched_error = error
             raise error
 
-        @error_handler.decorator(on_error=store_error)
+        @error_handler.decorator_as_result(on_error=store_error)
         async def async_function(hello: str) -> None:
             raise ValueError(f"This is a test error {hello}")
 
@@ -101,7 +100,7 @@ class TestErrorHandlerDecorator:
             catched_error = error
             raise error
 
-        @error_handler.decorator(on_error=store_error)
+        @error_handler.decorator_as_result(on_error=store_error)
         def func(hello: str) -> None:
             raise ValueError(f"This is a test error {hello}")
 
@@ -124,14 +123,14 @@ class TestErrorHandlerDecorator:
                 on_error=error_callback,
                 on_finalize=finalize_callback,
                 on_success=assert_not_called,
-                on_error_return_always=error_handler.ERRORED,
+                on_error_return_always=None,
             )
             def func(self, hello: str) -> None:
                 raise ValueError(f"This is a test error {hello}")
 
         instance = MyClass(42)
         result = instance.func("world")
-        assert result == error_handler.ERRORED
+        assert result is None
         assert str(error_tracker[0][0][0]) == "This is a test error world"
         assert error_tracker == [((error_tracker[0][0][0], instance, "world"), {})]
         assert finalize_tracker == [((instance, "world"), {})]

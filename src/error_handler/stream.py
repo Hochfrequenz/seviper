@@ -6,9 +6,10 @@ import logging
 import sys
 from typing import Any, AsyncIterable, AsyncIterator, Callable
 
+from . import NegativeResult, PositiveResult, ResultType
 from ._extra import IS_AIOSTREAM_INSTALLED
-from .decorator import decorator
-from .types import ERRORED, AsyncFunctionType, FunctionType, SecuredAsyncFunctionType, SecuredFunctionType, is_secured
+from .decorator import decorator_as_result
+from .types import AsyncFunctionType, FunctionType, SecuredAsyncFunctionType, SecuredFunctionType, is_secured
 
 if IS_AIOSTREAM_INSTALLED:
     import aiostream
@@ -28,7 +29,7 @@ if IS_AIOSTREAM_INSTALLED:
         ordered: bool = True,
         task_limit: int | None = None,
         on_success: Callable[[U, T], Any] | None = None,
-        on_error: Callable[[Exception, T], Any] | None = None,
+        on_error: Callable[[BaseException, T], Any] | None = None,
         on_finalize: Callable[[T], Any] | None = None,
         wrap_secured_function: bool = False,
         suppress_recalling_on_error: bool = True,
@@ -41,11 +42,6 @@ if IS_AIOSTREAM_INSTALLED:
         caught by a previous catcher.
         """
         if not wrap_secured_function and is_secured(func):
-            if func.__catcher__.on_error_return_always is not ERRORED:
-                raise ValueError(
-                    "The given function is already secured but does not return ERRORED in error case. "
-                    "If the secured function re-raises errors you can set wrap_secured_function=True"
-                )
             if (
                 on_success is not None
                 or on_error is not None
@@ -62,22 +58,32 @@ if IS_AIOSTREAM_INSTALLED:
             )
             secured_func = func
         else:
-            secured_func = decorator(  # type: ignore[assignment]
+            # pylint: disable=duplicate-code
+            secured_func = decorator_as_result(  # type: ignore[assignment]
                 on_success=on_success,
                 on_error=on_error,
                 on_finalize=on_finalize,
-                on_error_return_always=ERRORED,
                 suppress_recalling_on_error=suppress_recalling_on_error,
             )(
                 func  # type: ignore[arg-type]
             )
             # Ignore that T | ErroredType is not compatible with T. All ErroredType results are filtered out
             # in a subsequent step.
-        next_source: AsyncIterator[U] = aiostream.stream.map.raw(
+        results: AsyncIterator[ResultType[U]] = aiostream.stream.map.raw(
             source, secured_func, *more_sources, ordered=ordered, task_limit=task_limit  # type: ignore[arg-type]
         )
-        next_source = aiostream.stream.filter.raw(next_source, lambda result: result is not ERRORED)
-        return next_source
+        positive_results: AsyncIterator[PositiveResult[U]] = aiostream.stream.filter.raw(
+            results,  # type: ignore[arg-type]
+            # mypy can't successfully narrow the type here.
+            lambda result: not isinstance(result, NegativeResult),
+        )
+        result_values: AsyncIterator[U] = aiostream.stream.map.raw(
+            positive_results,
+            lambda result: (  # type: ignore[arg-type, misc]
+                result.result if isinstance(result, PositiveResult) else result
+            ),
+        )
+        return result_values
 
 else:
     from ._extra import _NotInstalled

@@ -19,7 +19,7 @@ from .result import (
     ResultType,
     ReturnValues,
 )
-from .types import ERRORED, UNSET, ErroredType, T, UnsetType
+from .types import UNSET, T, UnsetType
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -43,7 +43,6 @@ class Catcher(Generic[T]):
         on_success: Callback | None = None,
         on_error: Callback | None = None,
         on_finalize: Callback | None = None,
-        on_error_return_always: T | ErroredType = ERRORED,
         suppress_recalling_on_error: bool = True,
         raise_callback_errors: bool = True,
         no_wrap_exception_group_when_reraise: bool = True,
@@ -51,7 +50,6 @@ class Catcher(Generic[T]):
         self.on_success = on_success
         self.on_error = on_error
         self.on_finalize = on_finalize
-        self.on_error_return_always = on_error_return_always
         self.suppress_recalling_on_error = suppress_recalling_on_error
         """
         If this flag is set, the framework won't call the callbacks if the caught exception was already caught by
@@ -208,7 +206,7 @@ class Catcher(Generic[T]):
             result = callable_to_secure(*args, **kwargs)
             self._result = PositiveResult(result=result)
         except BaseException as error:  # pylint: disable=broad-exception-caught
-            self._result = NegativeResult(error=error, result=self.on_error_return_always)
+            self._result = NegativeResult(error=error)
         return self.result
 
     async def secure_await(  # type: ignore[return]  # Because mypy is stupid, idk.
@@ -227,8 +225,14 @@ class Catcher(Generic[T]):
             result = await awaitable_to_secure
             self._result = PositiveResult(result=result)
         except BaseException as error:  # pylint: disable=broad-exception-caught
-            self._result = NegativeResult(error=error, result=self.on_error_return_always)
+            self._result = NegativeResult(error=error)
         return self.result
+
+
+class ContextCatcher(Catcher[UnsetType]):
+    """
+    This class is a special case of the Catcher class. It is meant to use the context manager.
+    """
 
     @contextmanager
     def secure_context(self) -> Iterator[Self]:
@@ -245,4 +249,4 @@ class Catcher(Generic[T]):
             yield self
             self._result = PositiveResult(result=UNSET)
         except BaseException as error:  # pylint: disable=broad-exception-caught
-            self._result = NegativeResult(error=error, result=self.on_error_return_always)
+            self._result = NegativeResult(error=error)

@@ -6,15 +6,16 @@ from contextlib import contextmanager
 from typing import Any, Callable, Iterator
 
 from .callback import Callback, ErrorCallback
-from .core import Catcher
+from .core import Catcher, ContextCatcher
 from .types import UnsetType
 
 
 # pylint: disable=unsubscriptable-object
 @contextmanager
 def context_manager(
+    *,
     on_success: Callable[[], Any] | None = None,
-    on_error: Callable[[Exception], Any] | None = None,
+    on_error: Callable[[BaseException], Any] | None = None,
     on_finalize: Callable[[], Any] | None = None,
     suppress_recalling_on_error: bool = True,
 ) -> Iterator[Catcher[UnsetType]]:
@@ -28,7 +29,7 @@ def context_manager(
     If suppress_recalling_on_error is True, the on_error callable will not be called if the error were already
     caught by a previous catcher.
     """
-    catcher = Catcher[UnsetType](
+    catcher = ContextCatcher(
         Callback.from_callable(on_success, return_type=Any) if on_success is not None else None,
         ErrorCallback.from_callable(on_error, return_type=Any) if on_error is not None else None,
         Callback.from_callable(on_finalize, return_type=Any) if on_finalize is not None else None,
