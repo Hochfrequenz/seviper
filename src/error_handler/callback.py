@@ -102,7 +102,9 @@ class ErrorCallback(Callback[_P, _T]):
     signature.
     """
 
-    _CALLBACK_ERROR_PARAM = inspect.Parameter("error", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Exception)
+    _CALLBACK_ERROR_PARAM = inspect.Parameter(
+        "error", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=BaseException
+    )
 
     @classmethod
     def from_callable(

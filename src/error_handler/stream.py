@@ -29,7 +29,7 @@ if IS_AIOSTREAM_INSTALLED:
         ordered: bool = True,
         task_limit: int | None = None,
         on_success: Callable[[U, T], Any] | None = None,
-        on_error: Callable[[Exception, T], Any] | None = None,
+        on_error: Callable[[BaseException, T], Any] | None = None,
         on_finalize: Callable[[T], Any] | None = None,
         wrap_secured_function: bool = False,
         suppress_recalling_on_error: bool = True,

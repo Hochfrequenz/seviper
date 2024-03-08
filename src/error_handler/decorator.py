@@ -84,7 +84,7 @@ class Decorator(Protocol[_P, _T]):
 def decorator_as_result(
     *,
     on_success: Callable[Concatenate[_T, _P], Any] | None = None,
-    on_error: Callable[Concatenate[Exception, _P], Any] | None = None,
+    on_error: Callable[Concatenate[BaseException, _P], Any] | None = None,
     on_finalize: Callable[_P, Any] | None = None,
     suppress_recalling_on_error: bool = True,
 ) -> SecureDecorator[_P, _T]:
@@ -150,13 +150,13 @@ def decorator_as_result(
 # pylint: disable=too-many-arguments, too-many-locals
 def retry_on_error(
     *,
-    on_error: Callable[Concatenate[Exception, int, _P], bool],
+    on_error: Callable[Concatenate[BaseException, int, _P], bool],
     retry_stepping_func: Callable[[int], float] = lambda retry_count: 1.71**retry_count,
     # <-- with max_retries = 10 the whole decorator may wait up to 5 minutes.
     # because sum(1.71seconds**i for i in range(10)) == 5minutes
     max_retries: int = 10,
     on_success: Callable[Concatenate[_T, int, _P], Any] | None = None,
-    on_fail: Callable[Concatenate[Exception, int, _P], Any] | None = None,
+    on_fail: Callable[Concatenate[BaseException, int, _P], Any] | None = None,
     on_finalize: Callable[Concatenate[int, _P], Any] | None = None,
     logger: logging.Logger = logging.getLogger(__name__),
 ) -> Decorator[_P, _T]:
@@ -181,13 +181,13 @@ def retry_on_error(
                 *sig.parameters.values(),
             ],
         )
-        on_error_callback: ErrorCallback[Concatenate[Exception, int, _P], bool] = ErrorCallback.from_callable(
+        on_error_callback: ErrorCallback[Concatenate[BaseException, int, _P], bool] = ErrorCallback.from_callable(
             on_error, sig, return_type=bool
         )
         on_success_callback: SuccessCallback[Concatenate[_T, int, _P], Any] | None = (
             SuccessCallback.from_callable(on_success, sig, return_type=Any) if on_success is not None else None
         )
-        on_fail_callback: ErrorCallback[Concatenate[Exception, int, _P], Any] | None = (
+        on_fail_callback: ErrorCallback[Concatenate[BaseException, int, _P], Any] | None = (
             ErrorCallback.from_callable(on_fail, sig, return_type=Any) if on_fail is not None else None
         )
         on_finalize_callback: Callback[Concatenate[int, _P], Any] | None = (
@@ -295,7 +295,7 @@ def retry_on_error(
 def decorator(
     *,
     on_success: Callable[Concatenate[_T, _P], Any] | None = None,
-    on_error: Callable[Concatenate[Exception, _P], Any] | None = None,
+    on_error: Callable[Concatenate[BaseException, _P], Any] | None = None,
     on_finalize: Callable[_P, Any] | None = None,
     suppress_recalling_on_error: bool = True,
     on_error_return_always: _T | UnsetType = UNSET,

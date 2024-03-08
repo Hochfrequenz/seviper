@@ -15,7 +15,7 @@ from .types import UnsetType
 def context_manager(
     *,
     on_success: Callable[[], Any] | None = None,
-    on_error: Callable[[Exception], Any] | None = None,
+    on_error: Callable[[BaseException], Any] | None = None,
     on_finalize: Callable[[], Any] | None = None,
     suppress_recalling_on_error: bool = True,
 ) -> Iterator[Catcher[UnsetType]]:
