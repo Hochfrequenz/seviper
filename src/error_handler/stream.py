@@ -4,12 +4,12 @@ This module contains pipable operators that are used to handle errors in aiostre
 
 import logging
 import sys
-from typing import Any, AsyncIterable, AsyncIterator, Callable
+from typing import Any, AsyncIterable, AsyncIterator, Callable, Coroutine
 
 from . import NegativeResult, PositiveResult, ResultType
 from ._extra import IS_AIOSTREAM_INSTALLED
 from .decorator import decorator_as_result
-from .types import AsyncFunctionType, FunctionType, SecuredAsyncFunctionType, SecuredFunctionType, is_secured
+from .types import is_secured
 
 if IS_AIOSTREAM_INSTALLED:
     import aiostream
@@ -19,12 +19,7 @@ if IS_AIOSTREAM_INSTALLED:
     @aiostream.pipable_operator
     def map(
         source: AsyncIterable[T],
-        func: (
-            FunctionType[[T], U]
-            | AsyncFunctionType[[T], U]
-            | SecuredFunctionType[[T], U]
-            | SecuredAsyncFunctionType[[T], U]
-        ),
+        func: Callable[[T], Coroutine[None, None, U]] | Callable[[T], U],
         *more_sources: AsyncIterable[T],
         ordered: bool = True,
         task_limit: int | None = None,

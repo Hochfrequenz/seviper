@@ -292,6 +292,9 @@ def retry_on_error(
     return decorator_inner  # type: ignore[return-value]
 
 
+_C = TypeVar("_C", bound=Callable)
+
+
 def decorator(
     *,
     on_success: Callable[Concatenate[_T, _P], Any] | None = None,
@@ -299,7 +302,7 @@ def decorator(
     on_finalize: Callable[_P, Any] | None = None,
     suppress_recalling_on_error: bool = True,
     on_error_return_always: _T | UnsetType = UNSET,
-) -> Decorator[_P, _T]:
+) -> Callable[[_C], _C]:
     """
     Returns a callback that converts the result of a secured function back to the original return type.
     To make this work, you need to define which value should be returned in error cases.
