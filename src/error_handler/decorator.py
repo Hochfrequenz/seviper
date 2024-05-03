@@ -7,19 +7,7 @@ import functools
 import inspect
 import logging
 import time
-from typing import (
-    Any,
-    Callable,
-    Concatenate,
-    Coroutine,
-    Generator,
-    ParamSpec,
-    Protocol,
-    TypeGuard,
-    TypeVar,
-    cast,
-    overload,
-)
+from typing import Any, Callable, Concatenate, Generator, ParamSpec, Protocol, TypeGuard, TypeVar, cast, overload
 
 from .callback import Callback, ErrorCallback, SuccessCallback
 from .core import Catcher
