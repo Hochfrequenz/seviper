@@ -4,12 +4,12 @@ This module contains pipable operators that are used to handle errors in aiostre
 
 import logging
 import sys
-from typing import Any, AsyncIterable, AsyncIterator, Awaitable, Callable, Coroutine, Protocol
+from typing import Any, AsyncIterable, AsyncIterator, Callable, Coroutine
 
 from . import NegativeResult, PositiveResult, ResultType
 from ._extra import IS_AIOSTREAM_INSTALLED
 from .decorator import decorator_as_result
-from .types import AsyncFunctionType, FunctionType, SecuredAsyncFunctionType, SecuredFunctionType, is_secured
+from .types import is_secured
 
 if IS_AIOSTREAM_INSTALLED:
     import aiostream
