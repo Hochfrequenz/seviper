@@ -6,5 +6,5 @@
 #
 aiostream==0.5.2
     # via seviper (pyproject.toml)
-typing-extensions==4.9.0
+typing-extensions==4.12.1
     # via aiostream
