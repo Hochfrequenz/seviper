@@ -19,7 +19,7 @@ class _NotInstalled:
     """
 
     def __getattr__(self, item):
-        if item == "map":
+        if item in ("map", "action"):
             raise_import_error()
 
 

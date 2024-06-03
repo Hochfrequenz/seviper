@@ -7,10 +7,12 @@ import sys
 from ._extra import IS_AIOSTREAM_INSTALLED
 
 if IS_AIOSTREAM_INSTALLED:
+    from .stream import action as _action
     from .stream import map as _map
 
     # pylint: disable=redefined-builtin
     map = _map.pipe
+    action = _action.pipe
 else:
     from ._extra import _NotInstalled
 
