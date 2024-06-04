@@ -87,7 +87,7 @@ if IS_AIOSTREAM_INSTALLED:
         func: Callable[[T], Awaitable[Any] | Any],
         ordered: bool = True,
         task_limit: int | None = None,
-        on_success: Callable[[U, T], Any] | None = None,
+        on_success: Callable[[T], Any] | None = None,
         on_error: Callable[[BaseException, T], Any] | None = None,
         on_finalize: Callable[[T], Any] | None = None,
         wrap_secured_function: bool = False,
@@ -98,6 +98,7 @@ if IS_AIOSTREAM_INSTALLED:
         This operator does mostly the same as stream.action of aiostream.
         Additionally, it catches all errors and filters out errored results.
         """
+        innerfunc: Callable[[T], Coroutine[None, None, T]] | Callable[[T], T]
         if asyncio.iscoroutinefunction(func):
 
             async def innerfunc(arg: T, *_: object) -> T:
@@ -117,7 +118,7 @@ if IS_AIOSTREAM_INSTALLED:
             innerfunc,
             ordered=ordered,
             task_limit=task_limit,
-            on_success=on_success,
+            on_success=lambda u, t: on_success(t) if on_success is not None else None,
             on_error=on_error,
             on_finalize=on_finalize,
             wrap_secured_function=wrap_secured_function,
