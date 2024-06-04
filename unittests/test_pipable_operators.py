@@ -142,3 +142,21 @@ class TestErrorHandlerPipableOperators:
         elements = await stream.list(op)
         assert set(elements) == {1, 3, 5}
         assert errored_nums == {2, 4, 6}
+
+    async def test_secured_action_pipe(self):
+        errored_nums: set[int] = set()
+        op = stream.iterate([1, 2, 3, 4, 5, 6])
+
+        def raise_for_even(num: int):
+            if num % 2 == 0:
+                raise ValueError(f"{num}")
+
+        def store(error: Exception, _: int):
+            nonlocal errored_nums
+            errored_nums.add(int(str(error)))
+
+        op = op | error_handler.pipe.action(raise_for_even, on_error=store)
+
+        elements = await stream.list(op)
+        assert set(elements) == {1, 3, 5}
+        assert errored_nums == {2, 4, 6}

@@ -2,9 +2,10 @@
 This module contains pipable operators that are used to handle errors in aiostream pipelines.
 """
 
+import asyncio
 import logging
 import sys
-from typing import Any, AsyncIterable, AsyncIterator, Callable, Coroutine
+from typing import Any, AsyncIterable, AsyncIterator, Awaitable, Callable, Coroutine
 
 from . import NegativeResult, PositiveResult, ResultType
 from ._extra import IS_AIOSTREAM_INSTALLED
@@ -79,6 +80,51 @@ if IS_AIOSTREAM_INSTALLED:
             ),
         )
         return result_values
+
+    @aiostream.pipable_operator
+    def action(
+        source: AsyncIterable[T],
+        func: Callable[[T], Awaitable[Any] | Any],
+        ordered: bool = True,
+        task_limit: int | None = None,
+        on_success: Callable[[T], Any] | None = None,
+        on_error: Callable[[BaseException, T], Any] | None = None,
+        on_finalize: Callable[[T], Any] | None = None,
+        wrap_secured_function: bool = False,
+        suppress_recalling_on_error: bool = True,
+        logger: logging.Logger = logging.getLogger(__name__),
+    ) -> AsyncIterator[T]:
+        """
+        This operator does mostly the same as stream.action of aiostream.
+        Additionally, it catches all errors and filters out errored results.
+        """
+        innerfunc: Callable[[T], Coroutine[None, None, T]] | Callable[[T], T]
+        if asyncio.iscoroutinefunction(func):
+
+            async def innerfunc(arg: T, *_: object) -> T:
+                awaitable = func(arg)
+                assert isinstance(awaitable, Awaitable)
+                await awaitable
+                return arg
+
+        else:
+
+            def innerfunc(arg: T, *_: object) -> T:
+                func(arg)
+                return arg
+
+        return map.raw(
+            source,
+            innerfunc,
+            ordered=ordered,
+            task_limit=task_limit,
+            on_success=lambda u, t: on_success(t) if on_success is not None else None,
+            on_error=on_error,
+            on_finalize=on_finalize,
+            wrap_secured_function=wrap_secured_function,
+            suppress_recalling_on_error=suppress_recalling_on_error,
+            logger=logger,
+        )
 
 else:
     from ._extra import _NotInstalled
