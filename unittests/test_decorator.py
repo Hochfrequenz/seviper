@@ -72,6 +72,34 @@ class TestErrorHandlerDecorator:
         assert result == success_tracker[0][0][0] == "Hello World!"
         assert success_tracker[0][0][1] == "World!"
 
+    def test_decorator_static_method_error_case(self):
+        error_callback, error_tracker = create_callback_tracker()
+
+        class TestClass:
+            @staticmethod
+            @error_handler.decorator(on_error=error_callback, on_success=assert_not_called, on_error_return_always=None)
+            def func(hello: str) -> None:
+                raise ValueError(f"This is a test error {hello}")
+
+        result = TestClass.func("world")
+        assert isinstance(error_tracker[0][0][0], ValueError)
+        assert str(error_tracker[0][0][0]) == "This is a test error world"
+        assert error_tracker[0][0][1] == "world"
+        assert result is None
+
+    def test_decorator_static_method_success_case(self):
+        on_success_callback, success_tracker = create_callback_tracker()
+
+        class TestClass:
+            @staticmethod
+            @error_handler.decorator(on_success=on_success_callback, on_error=assert_not_called)
+            def func(hello: str) -> str:
+                return f"Hello {hello}"
+
+        result = TestClass.func("World!")
+        assert result == success_tracker[0][0][0] == "Hello World!"
+        assert success_tracker[0][0][1] == "World!"
+
     async def test_decorator_reraise_coroutine(self):
         catched_error: Exception | None = None
 
