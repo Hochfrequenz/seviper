@@ -37,7 +37,7 @@ class Catcher(Generic[T]):
     called accordingly.
     """
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-positional-arguments, too-many-arguments
     def __init__(
         self,
         on_success: Callback | None = None,
