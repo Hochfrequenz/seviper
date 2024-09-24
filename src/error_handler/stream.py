@@ -81,6 +81,7 @@ if IS_AIOSTREAM_INSTALLED:
         )
         return result_values
 
+    # pylint: disable=too-many-positional-arguments
     @aiostream.pipable_operator
     def action(
         source: AsyncIterable[T],
