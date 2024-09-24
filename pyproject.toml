@@ -16,14 +16,13 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-dependencies = []     # add all the dependencies here
+dependencies = [
+    "aiostream"
+]     # add all the dependencies here
 dynamic = ["readme", "version"]
 
 [project.optional-dependencies]
-aiostream = [
-    "aiostream==0.5.2",
-    "typing-extensions==4.12.1"
-]
+
 coverage = [
     "coverage==7.6.1"
 ]
