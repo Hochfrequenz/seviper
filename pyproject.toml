@@ -16,13 +16,16 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-dependencies = [
-    "aiostream"
-]     # add all the dependencies here
+dependencies = []     # add all the dependencies here
 dynamic = ["readme", "version"]
 
 [project.optional-dependencies]
-
+aiostream = [
+    "aiostream"
+    # Optional dependency which is not required for seviper to work, but mostly used for our cases
+    # No pinned version here, because it is not required for the CI of this package, because the users can decide
+    # themselves which version of aiostrem they want to use, depending on theire lokal aiostream version
+]
 coverage = [
     "coverage==7.6.1"
 ]
