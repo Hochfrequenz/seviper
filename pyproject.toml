@@ -22,9 +22,11 @@ dynamic = ["readme", "version"]
 [project.optional-dependencies]
 aiostream = [
     "aiostream"
-    # Optional dependency which is not required for seviper to work, but mostly used for our cases
-    # No pinned version here, because it is not required for the CI of this package, because the users can decide
-    # themselves which version of aiostrem they want to use, depending on theire lokal aiostream version
+    # seviper[aiostream], just like seviper[coverage], seviper[formatting], ... are optional dependencies, which are not required for the bare seviper logic to work.
+    # We have to distinguish between those optional dependencies which are intended for the users of seviper (like `seviper[aiostream]` which we mention in our README).
+    # Those are NOT pinned because seviper works with any recent version of aiostream and we don't want to restrict the users of the library.
+    # But those optional dependencies which we only use for our (internal) CI/CD pipeline (like coverage, formatting etc.) are pinned,
+    # because they are not inteded for external use but give us a stable and reproducable CI and dev experience.
 ]
 coverage = [
     "coverage==7.6.1"
