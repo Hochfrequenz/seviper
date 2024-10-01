@@ -2,7 +2,7 @@
 name = "seviper"
 description = "A simple and easy to use library to catch and handle exceptions."
 license = { text = "MIT" }
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [{ name = "Leon Haffmans", email = "leon.haffmans@hochfrequenz.de" }]
 keywords = ["error-handling", "aiostream"]
 classifiers = [
@@ -13,6 +13,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -20,7 +21,38 @@ dependencies = []     # add all the dependencies here
 dynamic = ["readme", "version"]
 
 [project.optional-dependencies]
-aiostream = ["aiostream"]
+aiostream = [
+    "aiostream"
+    # seviper[aiostream], just like seviper[coverage], seviper[formatting], ... are optional dependencies, which are not required for the bare seviper logic to work.
+    # We have to distinguish between those optional dependencies which are intended for the users of seviper (like `seviper[aiostream]` which we mention in our README).
+    # Those are NOT pinned because seviper works with any recent version of aiostream and we don't want to restrict the users of the library.
+    # But those optional dependencies which we only use for our (internal) CI/CD pipeline (like coverage, formatting etc.) are pinned,
+    # because they are not inteded for external use but give us a stable and reproducable CI and dev experience.
+]
+coverage = [
+    "coverage==7.6.1"
+]
+formatting = [
+    "black==24.8.0",
+    "isort==5.13.2"
+]
+linting = [
+    "pylint==3.3.0"
+]
+spellcheck = [
+    "codespell==2.3.0"
+]
+test_packaging = [
+    "build==1.2.2",
+    "twine==5.1.1"
+]
+tests = [
+    "pytest==8.3.3",
+    "pytest-asyncio==0.24.0"
+]
+type_check = [
+    "mypy==1.11.2"
+]
 
 [project.urls]
 Changelog = "https://github.com/Hochfrequenz/seviper/releases"
@@ -40,8 +72,6 @@ max-line-length = 120
 [build-system]
 requires = ["hatchling>=1.8.0", "hatch-vcs", "hatch-fancy-pypi-readme"]
 build-backend = "hatchling.build"
-
-
 
 [tool.hatch.metadata.hooks.fancy-pypi-readme]
 content-type = "text/markdown"
