@@ -52,7 +52,7 @@ tests = [
     "pytest-asyncio==0.25.3"
 ]
 type_check = [
-    "mypy==1.14.1"
+    "mypy==1.15.0"
 ]
 
 [project.urls]
