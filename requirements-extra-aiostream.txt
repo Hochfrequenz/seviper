@@ -4,7 +4,7 @@
 #
 #    pip-compile --extra=aiostream --output-file=requirements-extra-aiostream.txt pyproject.toml
 #
-aiostream==0.7.0
+aiostream==0.7.1
     # via seviper (pyproject.toml)
 typing-extensions==4.15.0
     # via aiostream
