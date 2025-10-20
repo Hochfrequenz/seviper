@@ -31,7 +31,7 @@ aiostream = [
     # because they are not inteded for external use but give us a stable and reproducable CI and dev experience.
 ]
 coverage = [
-    "coverage==7.10.6"
+    "coverage==7.11.0"
 ]
 formatting = [
     "black==25.1.0",
