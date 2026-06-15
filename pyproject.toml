@@ -48,7 +48,7 @@ test_packaging = [
     "twine==6.2.0"
 ]
 tests = [
-    "pytest==9.0.3",
+    "pytest==9.1.0",
     "pytest-asyncio==1.4.0"
 ]
 type_check = [
