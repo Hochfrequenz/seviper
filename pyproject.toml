@@ -31,28 +31,28 @@ aiostream = [
     # because they are not inteded for external use but give us a stable and reproducable CI and dev experience.
 ]
 coverage = [
-    "coverage==7.10.6"
+    "coverage==7.15.0"
 ]
 formatting = [
-    "black==25.1.0",
-    "isort==6.1.0"
+    "black==26.5.1",
+    "isort==8.0.1"
 ]
 linting = [
-    "pylint==3.3.8"
+    "pylint==4.0.6"
 ]
 spellcheck = [
-    "codespell==2.4.1"
+    "codespell==2.4.2"
 ]
 test_packaging = [
-    "build==1.3.0",
+    "build==1.5.0",
     "twine==6.2.0"
 ]
 tests = [
-    "pytest==8.4.2",
-    "pytest-asyncio==1.1.0"
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0"
 ]
 type_check = [
-    "mypy==1.18.2"
+    "mypy==2.1.0"
 ]
 
 [project.urls]
