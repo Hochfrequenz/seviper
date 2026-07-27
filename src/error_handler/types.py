@@ -94,7 +94,7 @@ class SecuredAsyncFunctionType(Protocol[P, T]):
 
 
 def is_secured(
-    func: FunctionType[P, T] | SecuredFunctionType[P, T] | AsyncFunctionType[P, T] | SecuredAsyncFunctionType[P, T]
+    func: FunctionType[P, T] | SecuredFunctionType[P, T] | AsyncFunctionType[P, T] | SecuredAsyncFunctionType[P, T],
 ) -> TypeGuard[SecuredFunctionType[P, T] | SecuredAsyncFunctionType[P, T]]:
     """
     Returns True if the given function is secured and returns a ResultType[T]. False otherwise.
