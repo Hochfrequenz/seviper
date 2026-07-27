@@ -19,7 +19,7 @@ _T = TypeVar("_T")
 
 
 def iscoroutinefunction(
-    callable_: FunctionType[_P, _T] | AsyncFunctionType[_P, _T]
+    callable_: FunctionType[_P, _T] | AsyncFunctionType[_P, _T],
 ) -> TypeGuard[AsyncFunctionType[_P, _T]]:
     """
     This function checks if the given callable is a coroutine function.
@@ -110,7 +110,7 @@ def decorator_as_result(
     def decorator_inner(callable_to_secure: FunctionType[_P, _T]) -> SecuredFunctionType[_P, _T]: ...
 
     def decorator_inner(
-        callable_to_secure: FunctionType[_P, _T] | AsyncFunctionType[_P, _T]
+        callable_to_secure: FunctionType[_P, _T] | AsyncFunctionType[_P, _T],
     ) -> SecuredFunctionType[_P, _T] | SecuredAsyncFunctionType[_P, _T]:
         sig = inspect.signature(callable_to_secure)
         catcher = Catcher[_T](
@@ -172,7 +172,7 @@ def retry_on_error(
     """
 
     def decorator_inner(
-        callable_to_secure: FunctionType[_P, _T] | AsyncFunctionType[_P, _T]
+        callable_to_secure: FunctionType[_P, _T] | AsyncFunctionType[_P, _T],
     ) -> FunctionType[_P, _T] | AsyncFunctionType[_P, _T]:
         sig = inspect.signature(callable_to_secure)
         sig = sig.replace(
@@ -310,7 +310,7 @@ def decorator(
     """
 
     def decorator_inner(
-        func: FunctionType[_P, _T] | AsyncFunctionType[_P, _T]
+        func: FunctionType[_P, _T] | AsyncFunctionType[_P, _T],
     ) -> FunctionType[_P, _T] | AsyncFunctionType[_P, _T]:
         secured_func = decorator_as_result(
             on_success=on_success,

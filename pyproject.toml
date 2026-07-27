@@ -24,40 +24,54 @@ dynamic = ["readme", "version"]
 [project.optional-dependencies]
 aiostream = [
     "aiostream"
-    # seviper[aiostream], just like seviper[coverage], seviper[formatting], ... are optional dependencies, which are not required for the bare seviper logic to work.
-    # We have to distinguish between those optional dependencies which are intended for the users of seviper (like `seviper[aiostream]` which we mention in our README).
-    # Those are NOT pinned because seviper works with any recent version of aiostream and we don't want to restrict the users of the library.
-    # But those optional dependencies which we only use for our (internal) CI/CD pipeline (like coverage, formatting etc.) are pinned,
-    # because they are not inteded for external use but give us a stable and reproducable CI and dev experience.
-]
-coverage = [
-    "coverage==7.15.2"
-]
-formatting = [
-    "black==26.5.1",
-    "isort==8.0.1"
-]
-linting = [
-    "pylint==4.0.6"
-]
-spellcheck = [
-    "codespell==2.4.3"
-]
-test_packaging = [
-    "build==1.5.1",
-    "twine==6.2.0"
-]
-tests = [
-    "pytest==9.1.1",
-    "pytest-asyncio==1.4.0"
-]
-type_check = [
-    "mypy==2.3.0"
+    # seviper[aiostream] is an optional dependency which is not required for the bare seviper logic to work.
+    # It is intended for the users of seviper (like `seviper[aiostream]` which we mention in our README).
+    # It is NOT pinned because seviper works with any recent version of aiostream and we don't want to restrict the users of the library.
+    # Our (internal) CI/CD tooling dependencies (coverage, formatting etc.) live in [dependency-groups] instead, because they are not intended for external use
+    # but give us a stable and reproducable CI and dev experience.
 ]
 
 [project.urls]
 Changelog = "https://github.com/Hochfrequenz/seviper/releases"
 Homepage = "https://github.com/Hochfrequenz/seviper"
+
+[dependency-groups]
+tests = [
+    "aiostream",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+]
+coverage = [
+    "coverage==7.15.2",
+    { include-group = "tests" },
+]
+formatting = [
+    "black==26.5.1",
+    "isort==8.0.1",
+]
+linting = [
+    "pylint==4.0.6",
+    { include-group = "tests" },
+]
+spell_check = [
+    "codespell==2.4.3",
+]
+type_check = [
+    "mypy==2.3.0",
+    { include-group = "tests" },
+]
+dev = [
+    { include-group = "tests" },
+    { include-group = "coverage" },
+    { include-group = "formatting" },
+    { include-group = "linting" },
+    { include-group = "spell_check" },
+    { include-group = "type_check" },
+    "pre-commit",
+]
+
+[tool.uv]
+default-groups = []
 
 [tool.black]
 line-length = 120
