@@ -68,10 +68,10 @@ if IS_AIOSTREAM_INSTALLED:
             # in a subsequent step.
         results: AsyncIterator[ResultType[U]] = aiostream.stream.map.raw(
             source,
-            secured_func,
+            secured_func,  # type: ignore[arg-type]
             *more_sources,
             ordered=ordered,
-            task_limit=task_limit,  # type: ignore[arg-type]
+            task_limit=task_limit,
         )
         positive_results: AsyncIterator[PositiveResult[U]] = aiostream.stream.filter.raw(
             results,  # type: ignore[arg-type]
