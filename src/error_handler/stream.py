@@ -5,7 +5,8 @@ This module contains pipable operators that are used to handle errors in aiostre
 import asyncio
 import logging
 import sys
-from typing import Any, AsyncIterable, AsyncIterator, Awaitable, Callable, Coroutine
+from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Coroutine
+from typing import Any
 
 from . import NegativeResult, PositiveResult, ResultType
 from ._extra import IS_AIOSTREAM_INSTALLED
@@ -29,7 +30,7 @@ if IS_AIOSTREAM_INSTALLED:
         on_finalize: Callable[[T], Any] | None = None,
         wrap_secured_function: bool = False,
         suppress_recalling_on_error: bool = True,
-        logger: logging.Logger = logging.getLogger(__name__),
+        logger: logging.Logger = logging.getLogger(__name__),  # noqa: B008
     ) -> AsyncIterator[U]:
         """
         This operator does mostly the same as stream.map of aiostream.
@@ -66,7 +67,11 @@ if IS_AIOSTREAM_INSTALLED:
             # Ignore that T | ErroredType is not compatible with T. All ErroredType results are filtered out
             # in a subsequent step.
         results: AsyncIterator[ResultType[U]] = aiostream.stream.map.raw(
-            source, secured_func, *more_sources, ordered=ordered, task_limit=task_limit  # type: ignore[arg-type]
+            source,
+            secured_func,
+            *more_sources,
+            ordered=ordered,
+            task_limit=task_limit,  # type: ignore[arg-type]
         )
         positive_results: AsyncIterator[PositiveResult[U]] = aiostream.stream.filter.raw(
             results,  # type: ignore[arg-type]
@@ -93,7 +98,7 @@ if IS_AIOSTREAM_INSTALLED:
         on_finalize: Callable[[T], Any] | None = None,
         wrap_secured_function: bool = False,
         suppress_recalling_on_error: bool = True,
-        logger: logging.Logger = logging.getLogger(__name__),
+        logger: logging.Logger = logging.getLogger(__name__),  # noqa: B008
     ) -> AsyncIterator[T]:
         """
         This operator does mostly the same as stream.action of aiostream.

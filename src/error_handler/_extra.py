@@ -5,7 +5,7 @@ The features that require aiostream are disabled if the package is not installed
 
 try:
     # pylint: disable=unused-import
-    import aiostream
+    import aiostream  # noqa: F401
 
     IS_AIOSTREAM_INSTALLED = True
 except ImportError:
@@ -28,6 +28,5 @@ def raise_import_error():
     Raises an ImportError if aiostream is not installed but the dev attempts to use features that require it.
     """
     raise ImportError(
-        "aiostream not found. This feature needs aiostream installed. "
-        "Consider using `pip install seviper[aiostream]`."
+        "aiostream not found. This feature needs aiostream installed. Consider using `pip install seviper[aiostream]`."
     )

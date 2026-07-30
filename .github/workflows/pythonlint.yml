@@ -23,8 +23,7 @@ jobs:
       - name: Run linting
         if: matrix.group == 'linting'
         run: |
-          uv run --group linting pylint src/error_handler
-          uv run --group linting pylint unittests --rcfile=unittests/.pylintrc
+          uv run --group linting ruff check src/error_handler unittests
       - name: Run type_check
         if: matrix.group == 'type_check'
         run: |

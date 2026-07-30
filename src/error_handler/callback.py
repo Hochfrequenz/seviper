@@ -5,7 +5,8 @@ arguments. Just in case that the type checker is not able to spot callback funct
 """
 
 import inspect
-from typing import Any, Callable, Generic, ParamSpec, Sequence, TypeVar, cast
+from collections.abc import Callable, Sequence
+from typing import Any, Generic, ParamSpec, TypeVar, cast
 
 from .types import UNSET
 

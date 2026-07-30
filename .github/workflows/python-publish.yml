@@ -28,8 +28,7 @@ jobs:
       - name: Run Tests
         run: |
           uv run --group tests pytest
-          uv run --group linting pylint src/error_handler
-          uv run --group linting pylint unittests --rcfile=unittests/.pylintrc
+          uv run --group linting ruff check src/error_handler unittests
           uv run --group type_check mypy --show-error-codes src/error_handler
           uv run --group type_check mypy --show-error-codes unittests
           uv run --group coverage coverage run -m pytest

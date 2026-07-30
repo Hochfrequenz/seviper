@@ -20,7 +20,7 @@ class TestSingleton:
     def test_singleton_with_args(self):
         with pytest.raises(AttributeError) as error_info:
 
-            class _(metaclass=SingletonMeta):
+            class _(metaclass=SingletonMeta):  # noqa: N801
                 def __init__(self, x: int):
                     self.x = x
 
