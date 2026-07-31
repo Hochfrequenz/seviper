@@ -7,7 +7,8 @@ import functools
 import inspect
 import logging
 import time
-from typing import Any, Callable, Concatenate, Generator, ParamSpec, Protocol, TypeGuard, TypeVar, cast, overload
+from collections.abc import Callable, Generator
+from typing import Any, Concatenate, ParamSpec, Protocol, TypeGuard, TypeVar, cast, overload
 
 from .callback import Callback, ErrorCallback, SuccessCallback
 from .core import Catcher
@@ -158,7 +159,7 @@ def retry_on_error(
     on_success: Callable[Concatenate[_T, int, _P], Any] | None = None,
     on_fail: Callable[Concatenate[BaseException, int, _P], Any] | None = None,
     on_finalize: Callable[Concatenate[int, _P], Any] | None = None,
-    logger: logging.Logger = logging.getLogger(__name__),
+    logger: logging.Logger = logging.getLogger(__name__),  # noqa: B008
 ) -> Decorator[_P, _T]:
     """
     This decorator retries a callable (sync or async) on error.
@@ -215,9 +216,9 @@ def retry_on_error(
                 callback_summary = catcher_executor.handle_result_and_call_callbacks(
                     result, retry_count_i, *args, **kwargs
                 )
-                assert (
-                    callback_summary.callback_result_types.error == CallbackResultType.SUCCESS
-                ), "Internal error: on_error callback was not successful but didn't raise exception"
+                assert callback_summary.callback_result_types.error == CallbackResultType.SUCCESS, (
+                    "Internal error: on_error callback was not successful but didn't raise exception"
+                )
                 if callback_summary.callback_return_values.error is True:
                     yield retry_count_i
                     continue

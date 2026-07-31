@@ -2,8 +2,9 @@
 This module provides a context manager to handle errors in a convenient way.
 """
 
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from .callback import Callback, ErrorCallback
 from .core import Catcher, ContextCatcher

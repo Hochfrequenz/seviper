@@ -6,8 +6,9 @@ methods to surround statements with try-except blocks and calls corresponding ca
 # pylint: disable=undefined-variable
 # Seems like pylint doesn't like the new typing features. It has a problem with the generic T of class Catcher.
 import inspect
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, Awaitable, Callable, Generic, Iterator, ParamSpec, Self, TypeVar
+from typing import Any, Generic, ParamSpec, Self, TypeVar
 
 from .callback import Callback
 from .result import (
@@ -106,7 +107,8 @@ class Catcher(Generic[T]):
         if self.no_wrap_exception_group_when_reraise and len(excs) == 1 and raise_from is excs[0]:
             raise raise_from
         if len(excs) > 0:
-            exc_group = BaseExceptionGroup("There were one or more errors while calling the callback functions.", excs)
+            error_message = "There were one or more errors while calling the callback functions."
+            exc_group = BaseExceptionGroup(error_message, excs)  # noqa: F821
             if raise_from is not None:
                 exc_group.__context__ = raise_from
             raise exc_group

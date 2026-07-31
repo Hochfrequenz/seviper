@@ -3,7 +3,8 @@ This module defines the types used in the error_handler module.
 """
 
 import inspect
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar
+from collections.abc import Callable, Coroutine
+from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeAlias, TypeGuard, TypeVar
 
 if TYPE_CHECKING:
     from .core import Catcher
@@ -44,7 +45,7 @@ class SingletonMeta(type):
         Returns a new __new__ method for the class that uses the Singleton metaclass.
         """
 
-        def __singleton_new__(cls, *args, **kwargs):
+        def __singleton_new__(cls, *args, **kwargs):  # noqa: N807
             if cls.__singleton_instance__ is None:
                 cls.__singleton_instance__ = old_new(cls, *args, **kwargs)
             return cls.__singleton_instance__

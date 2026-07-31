@@ -18,7 +18,7 @@ class TestCallbackErrors:
         def func(hello: str) -> str:
             return f"Hello {hello}"
 
-        with pytest.raises(BaseExceptionGroup) as error:
+        with pytest.raises(BaseExceptionGroup) as error:  # noqa: F821
             func("World!")
 
         assert len(error.value.exceptions) == 1
@@ -42,7 +42,7 @@ class TestCallbackErrors:
         def func(hello: str) -> str:
             raise ValueError(f"This is a test error {hello}")
 
-        with pytest.raises(BaseExceptionGroup) as error:
+        with pytest.raises(BaseExceptionGroup) as error:  # noqa: F821
             func("World!")
 
         assert len(error.value.exceptions) == 2

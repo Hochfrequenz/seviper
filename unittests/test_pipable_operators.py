@@ -20,7 +20,7 @@ class TestErrorHandlerPipableOperators:
 
     def test_aiostream_import_error_import_from_init(self, trigger_aiostream_import_error):
         # pylint: disable=import-outside-toplevel, reimported
-        from error_handler import pipe, stream
+        from error_handler import pipe, stream  # noqa: PLC0415
 
         with pytest.raises(ImportError) as error:
             _ = stream.map
@@ -35,12 +35,12 @@ class TestErrorHandlerPipableOperators:
     def test_aiostream_import_error_import_from_submodule(self, trigger_aiostream_import_error):
         # pylint: disable=import-outside-toplevel, redefined-builtin, unused-import
         with pytest.raises(ImportError) as error:
-            from error_handler.stream import map
+            from error_handler.stream import map  # noqa: PLC0415
 
         assert "aiostream not found" in str(error.value)
 
         with pytest.raises(ImportError) as error:
-            from error_handler.pipe import map
+            from error_handler.pipe import map  # noqa: PLC0415, F401
 
         assert "aiostream not found" in str(error.value)
 
