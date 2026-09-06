@@ -42,7 +42,7 @@ tests = [
     "pytest-asyncio==1.4.0",
 ]
 coverage = [
-    "coverage==7.15.4",
+    "coverage==7.16.0",
     { include-group = "tests" },
 ]
 linting = [
