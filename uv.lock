@@ -10,14 +10,14 @@ resolution-markers = [
 
 [[package]]
 name = "aiostream"
-version = "0.7.2"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/52/5c/64090fd9b6ecaf8a6411aaf800da5ebed4fe21d6933ff357de71b49bdcc8/aiostream-0.7.2.tar.gz", hash = "sha256:ba9773f470cb0771f258c64e181a2a2b92b0aba76ce73585a5b1b40d8864247a", size = 44116, upload-time = "2026-09-08T16:16:43.427Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/02/be/c3e2b0e360a0350294df8f8d90cf51bef258ca1421b8bf1e4bea49a2661a/aiostream-0.8.1.tar.gz", hash = "sha256:32d180b4ab01ebb2fc59eda7fa59f496895a4d07b32fc57537d1dade2514a8a1", size = 45013, upload-time = "2026-09-16T10:41:54.253Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/2f/e1a133cd83d326db04115f03c8eb4385f0bc61abb814e029ce77461621e0/aiostream-0.7.2-py3-none-any.whl", hash = "sha256:e23a209ba4bb9ddb15d217302e4bab6964bf6b9f56be9b29ce09cafa0f5086cd", size = 41557, upload-time = "2026-09-08T16:16:42.072Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/8c/018f92b5e71460ed4e83bb066a64c0a0072d8f90273464c75104bab73262/aiostream-0.8.1-py3-none-any.whl", hash = "sha256:f31c894f1e14a0825a45458e311e0b2a12d80b0d247a0fdf46d7d8ecaf4bc796", size = 41858, upload-time = "2026-09-16T10:41:52.865Z" },
 ]
 
 [[package]]
