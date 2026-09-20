@@ -46,7 +46,7 @@ coverage = [
     { include-group = "tests" },
 ]
 linting = [
-    "ruff==0.16.6",
+    "ruff==0.16.8",
     { include-group = "tests" },
 ]
 spell_check = [
