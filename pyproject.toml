@@ -53,7 +53,7 @@ spell_check = [
     "codespell==2.4.3",
 ]
 type_check = [
-    "mypy==2.3.1",
+    "mypy==2.4.0",
     { include-group = "tests" },
 ]
 dev = [
